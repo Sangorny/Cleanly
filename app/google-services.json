@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "816134253839",
+    "project_id": "cleanly-a0435",
+    "storage_bucket": "cleanly-a0435.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:816134253839:android:5106eb5898046cefc3a27a",
+        "android_client_info": {
+          "package_name": "com.cleanly"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCXkxUwpP_yjghHwHdRI1tQsGiTDeSkFX4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
