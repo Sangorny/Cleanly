@@ -1,9 +1,8 @@
 package com.cleanly
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
@@ -13,12 +12,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
-import coil.compose.rememberImagePainter
-import com.google.firebase.auth.FirebaseAuth
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
 import androidx.navigation.NavHostController
+import com.google.firebase.auth.FirebaseAuth
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,40 +26,22 @@ fun WelcomeScreen(navController: NavHostController) {
     val auth = FirebaseAuth.getInstance()
     val currentUser = auth.currentUser
 
+    // Estado para mostrar el popup de bienvenida
+    var showWelcomePopup by remember { mutableStateOf(true) }
+
+    // Estado para manejar la lista de tareas
+    var tasks = remember { mutableStateListOf("Lavar los platos", "Sacar la basura", "Limpiar el baño") }
+    var completedTasks = remember { mutableStateOf(1) }  // Tareas completadas, inicialmente 1
+
+    // Calcular el progreso
+    val progress = if (tasks.isNotEmpty()) completedTasks.value.toFloat() / tasks.size else 0f
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Avatar del usuario a la izquierda
-                        if (currentUser?.photoUrl != null) {
-                            Image(
-                                painter = rememberImagePainter(currentUser.photoUrl),
-                                contentDescription = "Avatar",
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.Gray),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Image(
-                                painter = painterResource(id = R.drawable.default_avatar),
-                                contentDescription = "Avatar predeterminado",
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.Gray),
-                                contentScale = ContentScale.Crop
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        // Mostrar el nick del usuario
-                        Text(text = currentUser?.displayName ?: "Usuario")
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(text = currentUser?.displayName ?: "Usuario", fontSize = 24.sp)
                     }
                 },
                 actions = {
@@ -87,7 +68,10 @@ fun WelcomeScreen(navController: NavHostController) {
                         DropdownMenuItem(
                             text = { Text("Logout") },
                             onClick = {
-                                signOut(navController) // Llamar a la función signOut de AuthService
+                                FirebaseAuth.getInstance().signOut()
+                                navController.navigate("login") {
+                                    popUpTo("welcome") { inclusive = true }
+                                }
                             }
                         )
                     }
@@ -107,11 +91,81 @@ fun WelcomeScreen(navController: NavHostController) {
                             )
                         )
                     ),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.TopCenter
             ) {
-                Text("Bienvenido al menú principal", style = MaterialTheme.typography.headlineMedium)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Top,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                ) {
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Recuadro para tareas pendientes
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color.LightGray.copy(alpha = 0.2f), shape = RoundedCornerShape(16.dp))
+                            .padding(16.dp)
+                    ) {
+                        Column {
+                            Text(
+                                text = "Tareas pendientes",
+                                style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Mostrar barra de progreso y el progreso actual
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("${completedTasks.value}/${tasks.size}", fontSize = 18.sp)
+                                Spacer(modifier = Modifier.width(16.dp))
+                                LinearProgressIndicator(
+                                    progress = progress,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(8.dp)
+                                        .clip(RoundedCornerShape(50)),
+                                    color = Color.Green
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Mostrar las tareas pendientes
+                            tasks.forEach { task ->
+                                Text(text = task, style = TextStyle(fontSize = 16.sp, color = Color.Black))
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    // Botón para añadir tareas a otros usuarios
+                    Button(onClick = { /* Acción para añadir tareas a otros usuarios */ }) {
+                        Text("Añadir tarea a otros usuarios")
+                    }
+                }
+
+                // Mostrar el popup de bienvenida
+                if (showWelcomePopup) {
+                    AlertDialog(
+                        onDismissRequest = { showWelcomePopup = false },
+                        confirmButton = {
+                            TextButton(onClick = { showWelcomePopup = false }) {
+                                Text("Cerrar")
+                            }
+                        },
+                        title = { Text("Bienvenid@ a Cleanly") },
+                        text = { Text("Aquí podrás gestionar tus tareas de forma colaborativa.") }
+                    )
+                }
             }
         }
     )
 }
+
+
 
