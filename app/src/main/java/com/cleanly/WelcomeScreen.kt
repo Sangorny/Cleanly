@@ -87,10 +87,7 @@ fun WelcomeScreen(navController: NavHostController) {
                         DropdownMenuItem(
                             text = { Text("Logout") },
                             onClick = {
-                                FirebaseAuth.getInstance().signOut()
-                                navController.navigate("login") {
-                                    popUpTo("welcome") { inclusive = true }
-                                }
+                                signOut(navController) // Llamar a la función signOut de AuthService
                             }
                         )
                     }
@@ -117,3 +114,4 @@ fun WelcomeScreen(navController: NavHostController) {
         }
     )
 }
+

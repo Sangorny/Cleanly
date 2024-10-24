@@ -7,7 +7,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
@@ -24,14 +23,15 @@ fun LoginScreen(navController: NavHostController) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Texto Cleanly en la parte superior
         Text(
             text = "Cleanly",
             style = MaterialTheme.typography.displayLarge.copy(
+                color = Color.White,
                 fontWeight = FontWeight.Bold,
-                fontSize = 48.sp,
-                color = Color.White
+                fontSize = 48.sp // Tamaño grande
             ),
-            modifier = Modifier.padding(bottom = 32.dp)
+            modifier = Modifier.padding(bottom = 32.dp) // Espacio debajo del título
         )
 
         OutlinedTextField(
@@ -46,19 +46,17 @@ fun LoginScreen(navController: NavHostController) {
             value = password,
             onValueChange = { password = it },
             label = { Text("Password") },
-            visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(onClick = {
-            signIn(email, password, navController)  // Función de inicio de sesión
-        }) {
+        Button(onClick = { signIn(email, password, navController) }) {
             Text("Iniciar sesión")
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Texto para ir a la pantalla de registro
         TextButton(onClick = { navController.navigate("register") }) {
             Text("Registrarse")
         }

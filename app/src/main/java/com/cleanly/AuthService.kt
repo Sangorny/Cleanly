@@ -1,4 +1,4 @@
-package com.cleanly  // Asegúrate de que el paquete sea el correcto
+package com.cleanly
 
 import android.util.Log
 import android.widget.Toast
@@ -68,6 +68,13 @@ fun createAccount(email: String, password: String, nick: String, navController: 
             }
     } else {
         Toast.makeText(navController.context, "La contraseña debe tener al menos 6 caracteres", Toast.LENGTH_SHORT).show()
+    }
+}
+
+fun signOut(navController: NavHostController) {
+    FirebaseAuth.getInstance().signOut()
+    navController.navigate("login") {
+        popUpTo("welcome") { inclusive = true }
     }
 }
 
