@@ -17,14 +17,44 @@
         android:padding="16dp" />
 
 
-    <Button
-        android:id="@+id/btnAgregarTarea"
-        android:layout_width="0dp"
+    <LinearLayout
+        android:id="@+id/botonesLayout"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Agregar Tarea"
+        android:orientation="horizontal"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_margin="16dp" />
+        app:layout_constraintVertical_bias="0.9">
+
+        <Button
+            android:id="@+id/btnAgregarTarea"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Agregar" />
+
+
+        <Space
+            android:layout_width="8dp"
+            android:layout_height="wrap_content" />
+
+
+        <Button
+            android:id="@+id/btnEliminarTarea"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Borrar" />
+
+        <Space
+            android:layout_width="8dp"
+            android:layout_height="wrap_content" />
+
+        <Button
+            android:id="@+id/btnAgregarTarea"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="editar" />
+
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
