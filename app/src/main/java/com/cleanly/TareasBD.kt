@@ -66,4 +66,79 @@ object TareasBD {
                 println("Error al verificar las tareas: $e")
             }
     }
+
+    fun eliminarTareasDeFirestore(
+        db: FirebaseFirestore,
+        nombresDeTareas: List<String>,
+        context: Context,
+        onSuccess: () -> Unit,
+        onFailure: () -> Unit = {} // Aquí cambiamos a una lambda sin parámetros
+    ) {
+        val collectionRef = db.collection("MisTareas")
+
+        nombresDeTareas.forEach { nombre ->
+            collectionRef.whereEqualTo("nombre", nombre)
+                .get()
+                .addOnSuccessListener { querySnapshot ->
+                    if (querySnapshot.isEmpty) {
+                        Toast.makeText(context, "No se encontró la tarea para eliminar: $nombre", Toast.LENGTH_SHORT).show()
+                    } else {
+                        querySnapshot.documents.forEach { document ->
+                            collectionRef.document(document.id)
+                                .delete()
+                                .addOnSuccessListener {
+                                    onSuccess()
+                                }
+                                .addOnFailureListener {
+                                    Toast.makeText(context, "Error al eliminar tarea: $nombre", Toast.LENGTH_SHORT).show()
+                                    onFailure()
+                                }
+                        }
+                    }
+                }
+                .addOnFailureListener {
+                    onFailure()
+                }
+        }
+    }
+
+    fun actualizarTareaEnFirestore(
+        db: FirebaseFirestore,
+        nombreOriginal: String,
+        nuevoNombre: String,
+        nuevosPuntos: Int,
+        context: Context,
+        onSuccess: () -> Unit,
+        onFailure: () -> Unit = {} // onFailure sin parámetros
+    ) {
+        db.collection("MisTareas")
+            .whereEqualTo("nombre", nombreOriginal)
+            .get()
+            .addOnSuccessListener { querySnapshot ->
+                if (querySnapshot.isEmpty) {
+                    Toast.makeText(context, "No se encontró la tarea original para actualizar", Toast.LENGTH_SHORT).show()
+                    onFailure()
+                } else {
+                    // Actualizar el primer documento encontrado con el nombre original
+                    val documentId = querySnapshot.documents.first().id
+                    val tareaActualizada = hashMapOf(
+                        "nombre" to nuevoNombre,
+                        "puntos" to nuevosPuntos
+                    )
+                    db.collection("MisTareas").document(documentId)
+                        .update(tareaActualizada as Map<String, Any>)
+                        .addOnSuccessListener {
+                            Toast.makeText(context, "Tarea actualizada correctamente", Toast.LENGTH_SHORT).show()
+                            onSuccess()
+                        }
+                        .addOnFailureListener {
+                            Toast.makeText(context, "Error al actualizar tarea", Toast.LENGTH_SHORT).show()
+                            onFailure() // Llamamos a onFailure sin pasar parámetros
+                        }
+                }
+            }
+            .addOnFailureListener {
+                onFailure()
+            }
+    }
 }

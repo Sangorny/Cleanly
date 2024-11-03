@@ -1,52 +1,71 @@
 package com.cleanly
 
 import android.os.Bundle
-import android.widget.Button
-import androidx.appcompat.app.AppCompatActivity
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
+import com.cleanly.ui.theme.CleanlyTheme
 import com.cleanly.utils.TareasBD
-import com.cleanly.utils.TareasPantalla
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.firestore.ktx.firestore
 
-class MainActivity : AppCompatActivity() {
-    private lateinit var recyclerView: RecyclerView
-    private lateinit var db: FirebaseFirestore
-    private lateinit var adapter: TareasAdapter
-    private val TAG = "MainActivity"
+class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
 
-        db = Firebase.firestore
-        recyclerView = findViewById(R.id.recyclerViewTareas)
-        recyclerView.layoutManager = LinearLayoutManager(this)
-        val btnAgregarTarea: Button = findViewById(R.id.btnAgregarTarea)
+        // Inicializar Firestore
+        val db = Firebase.firestore
 
-        btnAgregarTarea.setOnClickListener {
-            TareasPantalla.mostrarDialogoAgregarTarea(this, db) {
-                cargarTareasDesdeFirestore()
+        setContent {
+            CleanlyTheme {
+                Surface(color = MaterialTheme.colorScheme.background) {
+                    // Estado de la lista de tareas
+                    val taskList = remember { mutableStateListOf<Pair<String, Int>>() }
+
+                    // Función para actualizar la lista de tareas
+                    val updateTaskList: (List<Pair<String, Int>>) -> Unit = { newList ->
+                        taskList.clear()
+                        taskList.addAll(newList)
+                    }
+
+                    // Cargar tareas inicialmente desde Firestore
+                    TareasBD.cargarTareasDesdeFirestore(db) { listaTareas ->
+                        updateTaskList(listaTareas.map { it.nombre to it.puntos })
+                    }
+
+                    // Invocar la pantalla CRUDTareas con los eventos necesarios
+                    CRUDTareas(
+                        db = db,
+                        taskList = taskList,
+                        onCreate = {
+                            TareasBD.cargarTareasDesdeFirestore(db) { listaTareas ->
+                                updateTaskList(listaTareas.map { it.nombre to it.puntos })
+                            }
+                        },
+                        onDelete = {
+                            TareasBD.cargarTareasDesdeFirestore(db) { listaTareas ->
+                                updateTaskList(listaTareas.map { it.nombre to it.puntos })
+                            }
+                        },
+                        onList = {
+                            TareasBD.cargarTareasDesdeFirestore(db) { listaTareas ->
+                                updateTaskList(listaTareas.map { it.nombre to it.puntos })
+                            }
+                        },
+                        onEdit = {
+                            TareasBD.cargarTareasDesdeFirestore(db) { listaTareas ->
+                                updateTaskList(listaTareas.map { it.nombre to it.puntos })
+                            }
+                        },
+                        onTaskListUpdated = updateTaskList
+                    )
+                }
             }
         }
-
-        TareasBD.checkIfDefaultTasksExist(db, TAG) {
-            TareasPantalla.createDefaultTasks(db, TAG)
-        }
-
-        cargarTareasDesdeFirestore()
-    }
-
-    private fun cargarTareasDesdeFirestore() {
-        TareasBD.cargarTareasDesdeFirestore(db) { listaTareas ->
-            adapter = TareasAdapter(listaTareas)
-            recyclerView.adapter = adapter
-        }
-    }
-    private fun trabajarConTareasMarcadas() {
-        val tareasMarcadas = adapter.obtenerTareasMarcadas()
-
     }
 }
