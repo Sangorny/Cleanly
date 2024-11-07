@@ -1,4 +1,4 @@
-package com.cleanly
+package com.cleanly.WelcomeActivity
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -27,8 +27,8 @@ fun VentanaPrincipal(taskList: List<Pair<String, Int>>) {
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            Color(0xFF0D47A1),  // Azul oscuro
-                            Color(0xFF00E676)   // Verde
+                            Color(0xFF0D47A1),
+                            Color(0xFF00E676)
                         )
                     )
                 ),
@@ -41,12 +41,10 @@ fun VentanaPrincipal(taskList: List<Pair<String, Int>>) {
                     .fillMaxSize()
                     .padding(16.dp)
             ) {
-                // Barra de progreso de tareas completadas en la parte superior
                 BarraTareas(completedTasks, totalTasks)
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Encabezado de la lista de tareas
                 Text(
                     text = "Tareas pendientes",
                     fontSize = 24.sp,
@@ -55,8 +53,6 @@ fun VentanaPrincipal(taskList: List<Pair<String, Int>>) {
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
-
-                // Mostrar cada tarea con sombreado gris claro
                 taskList.forEach { (task, puntos) ->
                     Box(
                         modifier = Modifier
@@ -70,12 +66,10 @@ fun VentanaPrincipal(taskList: List<Pair<String, Int>>) {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Nombre de la tarea en blanco
                             Text(
                                 text = task,
                                 style = TextStyle(fontSize = 18.sp, color = Color.White)
                             )
-                            // Puntuación de la tarea en blanco y en negrita
                             Text(
                                 text = "$puntos puntos",
                                 style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)

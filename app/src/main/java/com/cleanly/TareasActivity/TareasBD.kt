@@ -1,8 +1,7 @@
-package com.cleanly.utils
+package com.cleanly.TareasActivity
 
 import android.content.Context
 import android.widget.Toast
-import com.cleanly.Tarea
 import com.google.firebase.firestore.FirebaseFirestore
 
 object TareasBD {
@@ -46,7 +45,6 @@ object TareasBD {
                 onSuccess(listaTareas)
             }
             .addOnFailureListener {
-                // Manejo de errores si se requiere
             }
     }
 
@@ -72,7 +70,7 @@ object TareasBD {
         nombresDeTareas: List<String>,
         context: Context,
         onSuccess: () -> Unit,
-        onFailure: () -> Unit = {} // Aquí cambiamos a una lambda sin parámetros
+        onFailure: () -> Unit = {}
     ) {
         val collectionRef = db.collection("MisTareas")
 
@@ -109,7 +107,7 @@ object TareasBD {
         nuevosPuntos: Int,
         context: Context,
         onSuccess: () -> Unit,
-        onFailure: () -> Unit = {} // onFailure sin parámetros
+        onFailure: () -> Unit = {}
     ) {
         db.collection("MisTareas")
             .whereEqualTo("nombre", nombreOriginal)
@@ -119,7 +117,6 @@ object TareasBD {
                     Toast.makeText(context, "No se encontró la tarea original para actualizar", Toast.LENGTH_SHORT).show()
                     onFailure()
                 } else {
-                    // Actualizar el primer documento encontrado con el nombre original
                     val documentId = querySnapshot.documents.first().id
                     val tareaActualizada = hashMapOf(
                         "nombre" to nuevoNombre,
@@ -133,7 +130,7 @@ object TareasBD {
                         }
                         .addOnFailureListener {
                             Toast.makeText(context, "Error al actualizar tarea", Toast.LENGTH_SHORT).show()
-                            onFailure() // Llamamos a onFailure sin pasar parámetros
+                            onFailure()
                         }
                 }
             }

@@ -1,4 +1,4 @@
-package com.cleanly
+package com.cleanly.WelcomeActivity
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box

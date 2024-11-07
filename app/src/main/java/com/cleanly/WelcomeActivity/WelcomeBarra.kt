@@ -1,4 +1,4 @@
-package com.cleanly
+package com.cleanly.WelcomeActivity
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,14 +15,12 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun BarraTareas(completedTasks: Int, totalTasks: Int) {
-    // Calcular progreso
     val progress = if (totalTasks > 0) completedTasks.toFloat() / totalTasks else 0f
 
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Barra de progreso
         LinearProgressIndicator(
             progress = progress,
             modifier = Modifier
@@ -34,7 +32,6 @@ fun BarraTareas(completedTasks: Int, totalTasks: Int) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Texto de Completadas debajo de la barra de progreso
         Text(
             text = "Completadas: $completedTasks / $totalTasks",
             fontSize = 12.sp,

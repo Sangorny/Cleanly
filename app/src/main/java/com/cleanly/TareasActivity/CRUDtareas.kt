@@ -1,6 +1,5 @@
-package com.cleanly
+package com.cleanly.TareasActivity
 
-import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,7 +17,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.cleanly.utils.TareasBD
 import com.google.firebase.firestore.FirebaseFirestore
 
 data class Tarea(
@@ -46,8 +44,6 @@ fun CRUDTareas(
     var taskName by remember { mutableStateOf("") }
     var taskPoints by remember { mutableStateOf("") }
     var nombreOriginal by remember { mutableStateOf("") }
-
-    // Función para manejar la creación de la tarea en Firebase
     val handleCreate = {
         if (taskName.isNotBlank() && taskPoints.isNotBlank()) {
             val puntos = taskPoints.toIntOrNull() ?: 0
@@ -59,12 +55,8 @@ fun CRUDTareas(
                 onSuccess = {
                     showSnackbarMessage = "Tarea añadida correctamente"
                     onCreate()
-
-                    // Limpiar campos después de añadir la tarea
                     taskName = ""
                     taskPoints = ""
-
-                    // Recargar las tareas después de añadir
                     TareasBD.cargarTareasDesdeFirestore(db) { tareasRecargadas ->
                         onTaskListUpdated(tareasRecargadas.map { it.nombre to it.puntos })
                         showDialog = false
@@ -75,8 +67,6 @@ fun CRUDTareas(
             showDialog = false
         }
     }
-
-    // Función para manejar la edición de la tarea seleccionada
     val handleEdit = {
         val tareasMarcadas = taskList.filter { tarea -> checkedStates[tarea.first] == true }
 
@@ -87,7 +77,6 @@ fun CRUDTareas(
                 "No puedes editar más de una tarea a la vez"
             }
         } else {
-            // Guardar el nombre original para buscar en Firebase
             val tareaSeleccionada = tareasMarcadas.first()
             nombreOriginal = tareaSeleccionada.first
             taskName = tareaSeleccionada.first
@@ -95,8 +84,6 @@ fun CRUDTareas(
             showEditDialog = true
         }
     }
-
-    // Función para manejar la eliminación de tareas seleccionadas
     val handleDelete = {
         val tareasMarcadasCount = checkedStates.values.count { it }
         val nombresTareasMarcadas = taskList
@@ -184,8 +171,6 @@ fun CRUDTareas(
                 showSnackbarMessage = null
             }
         }
-
-        // Diálogo para Crear la Tarea
         if (showDialog) {
             AlertDialog(
                 onDismissRequest = { showDialog = false },

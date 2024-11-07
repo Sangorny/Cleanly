@@ -1,4 +1,4 @@
-package com.cleanly
+package com.cleanly.WelcomeActivity
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -13,7 +13,7 @@ import androidx.compose.ui.unit.dp
 fun BotonesNavegacion() {
     BottomAppBar(
         modifier = Modifier.height(70.dp),
-        containerColor = Color.Transparent, // Fondo transparente
+        containerColor = Color.Transparent,
         content = {
             Button(
                 onClick = { /* Navegación a Inicio */ },
