@@ -21,12 +21,11 @@ class LogActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         auth = FirebaseAuth.getInstance()
-        auth.signOut()
 
         setContent {
             CleanlyTheme {
                 Surface(color = MaterialTheme.colorScheme.background) {
-                    CheckAuthenticationAndNavigate()
+                    AppNavigation()
                 }
             }
         }
@@ -39,11 +38,13 @@ class LogActivity : ComponentActivity() {
 
         LaunchedEffect(currentUser) {
             if (currentUser != null) {
+                // Si el usuario ya está autenticado, redirigir a TareaActivity
                 goToTareaActivity(context)
             }
         }
 
         if (currentUser == null) {
+            // Si el usuario no está autenticado, cargar la navegación para el inicio de sesión
             AppNavigation()
         }
     }
@@ -54,3 +55,4 @@ class LogActivity : ComponentActivity() {
         finish()
     }
 }
+
