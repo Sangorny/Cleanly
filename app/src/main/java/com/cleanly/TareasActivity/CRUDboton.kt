@@ -22,19 +22,19 @@ fun CRUDboton(
         horizontalArrangement = Arrangement.SpaceAround
     ) {
         Button(onClick = onCreate, modifier = Modifier.weight(1f)) {
-            Text("Crear", fontSize = 11.sp)
+            Text("Crear", fontSize = 10.sp)
         }
         Spacer(modifier = Modifier.width(8.dp))
         Button(onClick = onEdit, modifier = Modifier.weight(1f)) {
-            Text("Editar", fontSize = 11.sp)
+            Text("Editar", fontSize = 10.sp)
         }
         Spacer(modifier = Modifier.width(8.dp))
         Button(onClick = onDelete, modifier = Modifier.weight(1f)) {
-            Text("Borrar", fontSize = 11.sp)
+            Text("Borrar", fontSize = 10.sp)
         }
         Spacer(modifier = Modifier.width(8.dp))
         Button(onClick = onList, modifier = Modifier.weight(1f)) {
-            Text("Listar", fontSize = 11.sp)
+            Text("Listar", fontSize = 10.sp)
         }
     }
 }

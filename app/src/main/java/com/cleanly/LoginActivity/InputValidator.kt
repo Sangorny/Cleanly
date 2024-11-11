@@ -1,6 +1,5 @@
 package com.cleanly
 
-import android.util.Log
 
 object InputValidator {
 
