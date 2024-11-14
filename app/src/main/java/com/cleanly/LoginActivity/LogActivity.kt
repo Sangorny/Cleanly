@@ -10,6 +10,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
+import com.cleanly.WelcomeActivity.WelcomActivity
 import com.cleanly.ui.theme.CleanlyTheme
 import com.google.firebase.auth.FirebaseAuth
 
@@ -25,7 +26,7 @@ class LogActivity : ComponentActivity() {
         setContent {
             CleanlyTheme {
                 Surface(color = MaterialTheme.colorScheme.background) {
-                    AppNavigation()
+                    CheckAuthenticationAndNavigate()
                 }
             }
         }
@@ -38,8 +39,8 @@ class LogActivity : ComponentActivity() {
 
         LaunchedEffect(currentUser) {
             if (currentUser != null) {
-                // Si el usuario ya está autenticado, redirigir a TareaActivity
-                goToTareaActivity(context)
+                // Si el usuario está autenticado, redirigir a la WelcomActivity
+                goToWelcomActivity(context)
             }
         }
 
@@ -49,10 +50,9 @@ class LogActivity : ComponentActivity() {
         }
     }
 
-    private fun goToTareaActivity(context: Context) {
-        val intent = Intent(context, TareaActivity::class.java)
+    private fun goToWelcomActivity(context: Context) {
+        val intent = Intent(context, WelcomActivity::class.java)
         context.startActivity(intent)
         finish()
     }
 }
-
