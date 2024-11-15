@@ -1,12 +1,8 @@
-package com.cleanly.WelcomeActivity
+package com.cleanly
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.remember
 import com.cleanly.ui.theme.CleanlyTheme
 
 class WelcomActivity : ComponentActivity() {
@@ -16,10 +12,8 @@ class WelcomActivity : ComponentActivity() {
 
         setContent {
             CleanlyTheme {
-                Surface(color = MaterialTheme.colorScheme.background) {
-                    val taskList = remember { mutableStateListOf<Pair<String, Int>>() }
-                    VentanaPrincipal(taskList)
-                }
+                // Llama al composable principal `Welcome` sin parámetros
+                Welcome()
             }
         }
     }

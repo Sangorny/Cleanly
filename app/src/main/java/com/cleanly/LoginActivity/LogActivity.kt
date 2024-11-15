@@ -10,7 +10,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
-import com.cleanly.WelcomeActivity.WelcomActivity
 import com.cleanly.ui.theme.CleanlyTheme
 import com.google.firebase.auth.FirebaseAuth
 

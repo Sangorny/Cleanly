@@ -17,7 +17,7 @@
             android:name=".LogActivity"
             android:exported="false" />
         <activity
-            android:name=".WelcomeActivity.WelcomActivity"
+            android:name=".WelcomActivity"
             android:exported="false" />
         <activity
             android:name=".TareaActivity"
