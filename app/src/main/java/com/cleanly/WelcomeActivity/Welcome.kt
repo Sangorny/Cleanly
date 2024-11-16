@@ -19,6 +19,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import com.cleanly.R
 
 @Composable
 fun Welcome() {
@@ -78,6 +84,18 @@ fun ZoneGrid(
     zones: List<String>,
     modifier: Modifier = Modifier
 ) {
+    // Mapear zonas con sus imágenes
+    val zoneImages = mapOf(
+        "Baño" to R.drawable.cocina,
+        "Cocina" to R.drawable.cocina,
+        "Sala" to R.drawable.cocina,
+        "Dormitorio" to R.drawable.cocina
+    )
+    val CustomBlue = Color(0xFF02A9FF)
+
+    val BernadetteFontFamily = FontFamily(
+        Font(R.font.bernadette) // Apunta al archivo en `res/font/bernadette.ttf`
+    )
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         modifier = modifier,
@@ -90,13 +108,30 @@ fun ZoneGrid(
                     .size(150.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surface)
-                    .padding(8.dp),
-                contentAlignment = Alignment.Center
             ) {
+                // Imagen asociada a la zona
+                zoneImages[zone]?.let { imageRes ->
+                    Image(
+                        painter = painterResource(id = imageRes),
+                        contentDescription = "Imagen de $zone",
+                        modifier = Modifier
+                            .fillMaxSize() // La imagen ocupa todo el recuadro
+                            .clip(RoundedCornerShape(8.dp))
+                    )
+                }
+
+                // Texto superpuesto en la parte superior
                 Text(
                     text = zone,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 16.sp
+                    color = CustomBlue, // Texto azul
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    style = TextStyle(
+                        fontFamily = BernadetteFontFamily // Usa la fuente Bernadette
+                    ),
+                    modifier = Modifier
+                        .align(Alignment.TopCenter) // Posición del texto
+                        .padding(top = 6.dp) // Espaciado superior
                 )
             }
         }
