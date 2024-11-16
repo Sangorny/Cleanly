@@ -1,5 +1,6 @@
 package com.cleanly
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -8,28 +9,34 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.cleanly.R
 
 @Composable
 fun Welcome() {
-    // Lista dinámica de zonas
-    val zones = remember { mutableStateListOf("Baño", "Cocina", "Sala", "Dormitorio") }
+    val zones = remember {
+        mutableStateListOf(
+            "Baño" to R.drawable.bano,
+            "Cocina" to R.drawable.cocina,
+            "Sala" to R.drawable.salon,
+            "Dormitorio" to R.drawable.dormitorio
+        )
+    }
+    val showDialog = remember { mutableStateOf(false) }
+    val newZoneName = remember { mutableStateOf("") }
+    val selectedImage = remember { mutableStateOf<Int?>(null) } // Imagen seleccionada
 
     Box(
         modifier = Modifier
@@ -60,99 +67,177 @@ fun Welcome() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Grid dinámico para las zonas
             ZoneGrid(
                 zones = zones,
                 modifier = Modifier
-                    .weight(1f) // Ocupa el espacio restante
+                    .weight(1f)
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = 16.dp),
+                onAddZoneClick = { showDialog.value = true }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
+        }
 
-            // Botón para agregar nuevas zonas
-            AddZoneButton {
-                zones.add("Nueva Zona ${zones.size + 1}")
-            }
+        if (showDialog.value) {
+            AlertDialog(
+                onDismissRequest = { showDialog.value = false },
+                title = { Text(text = "Nueva Zona", fontWeight = FontWeight.Bold) },
+                text = {
+                    Column {
+                        Text(text = "Introduce el nombre de la nueva zona:")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        TextField(
+                            value = newZoneName.value,
+                            onValueChange = { newZoneName.value = it },
+                            placeholder = { Text("Nombre de la zona") }
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(text = "Selecciona una imagen:")
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(3),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.height(150.dp)
+                        ) {
+                            val defaultImages = listOf(
+                                R.drawable.default1,
+                                R.drawable.default1,
+                                R.drawable.default1,
+                                R.drawable.default1,
+                                R.drawable.default1
+                            )
+
+                            items(defaultImages) { imageRes ->
+                                Box(
+                                    modifier = Modifier
+                                        .size(50.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (selectedImage.value == imageRes) Color.LightGray else Color.Transparent)
+                                        .clickable { selectedImage.value = imageRes },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Image(
+                                        painter = painterResource(id = imageRes),
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            if (newZoneName.value.isNotBlank() && selectedImage.value != null) {
+                                zones.add(newZoneName.value.trim() to selectedImage.value!!)
+                                newZoneName.value = ""
+                                selectedImage.value = null
+                                showDialog.value = false
+                            }
+                        }
+                    ) {
+                        Text("Confirmar")
+                    }
+                },
+                dismissButton = {
+                    Button(
+                        onClick = {
+                            newZoneName.value = ""
+                            selectedImage.value = null
+                            showDialog.value = false
+                        }
+                    ) {
+                        Text("Cancelar")
+                    }
+                }
+            )
         }
     }
 }
 
 @Composable
 fun ZoneGrid(
-    zones: List<String>,
-    modifier: Modifier = Modifier
+    zones: List<Pair<String, Int>>,
+    modifier: Modifier = Modifier,
+    onAddZoneClick: () -> Unit
 ) {
-    // Mapear zonas con sus imágenes
-    val zoneImages = mapOf(
-        "Baño" to R.drawable.cocina,
-        "Cocina" to R.drawable.cocina,
-        "Sala" to R.drawable.cocina,
-        "Dormitorio" to R.drawable.cocina
-    )
     val CustomBlue = Color(0xFF02A9FF)
 
     val BernadetteFontFamily = FontFamily(
-        Font(R.font.bernadette) // Apunta al archivo en `res/font/bernadette.ttf`
+        Font(R.font.bernadette)
     )
+
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        items(zones) { zone ->
+        items(zones) { (zoneName, imageRes) ->
             Box(
                 modifier = Modifier
                     .size(150.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surface)
             ) {
-                // Imagen asociada a la zona
-                zoneImages[zone]?.let { imageRes ->
-                    Image(
-                        painter = painterResource(id = imageRes),
-                        contentDescription = "Imagen de $zone",
-                        modifier = Modifier
-                            .fillMaxSize() // La imagen ocupa todo el recuadro
-                            .clip(RoundedCornerShape(8.dp))
-                    )
-                }
-
-                // Texto superpuesto en la parte superior
+                Image(
+                    painter = painterResource(id = imageRes),
+                    contentDescription = "Imagen de $zoneName",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(8.dp))
+                )
                 Text(
-                    text = zone,
-                    color = CustomBlue, // Texto azul
+                    text = zoneName,
+                    color = CustomBlue,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     style = TextStyle(
-                        fontFamily = BernadetteFontFamily // Usa la fuente Bernadette
+                        fontFamily = BernadetteFontFamily
                     ),
                     modifier = Modifier
-                        .align(Alignment.TopCenter) // Posición del texto
-                        .padding(top = 6.dp) // Espaciado superior
+                        .align(Alignment.TopCenter)
+                        .padding(top = 6.dp)
                 )
             }
         }
-    }
-}
 
-@Composable
-fun AddZoneButton(onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(50.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.primary)
-            .clickable { onClick() },
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "Agregar Zona",
-            color = MaterialTheme.colorScheme.onPrimary,
-            fontSize = 16.sp
-        )
+        // Cuadro "Agregar"
+        item {
+            Box(
+                modifier = Modifier
+                    .size(150.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .clickable { onAddZoneClick() },
+                contentAlignment = Alignment.TopCenter
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.add),
+                    contentDescription = "Agregar nueva zona",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(8.dp))
+                )
+                Text(
+                    text = "Agregar",
+                    color = CustomBlue,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    style = TextStyle(
+                        fontFamily = BernadetteFontFamily
+                    ),
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 6.dp)
+                )
+            }
+        }
     }
 }
