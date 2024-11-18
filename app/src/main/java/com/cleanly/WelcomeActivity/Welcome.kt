@@ -1,5 +1,6 @@
 package com.cleanly
 
+import android.content.Intent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -36,7 +38,9 @@ fun Welcome() {
     }
     val showDialog = remember { mutableStateOf(false) }
     val newZoneName = remember { mutableStateOf("") }
-    val selectedImage = remember { mutableStateOf<Int?>(null) } // Imagen seleccionada
+    val selectedImage = remember { mutableStateOf<Int?>(null) }
+
+    val context = LocalContext.current // Contexto necesario para lanzar actividades
 
     Box(
         modifier = Modifier
@@ -73,12 +77,18 @@ fun Welcome() {
                     .weight(1f)
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
+                onZoneClick = {
+                    // Redirige a TareaActivity al hacer clic en un recuadro
+                    val intent = Intent(context, TareaActivity::class.java)
+                    context.startActivity(intent)
+                },
                 onAddZoneClick = { showDialog.value = true }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
         }
 
+        // Diálogo para agregar una nueva zona
         if (showDialog.value) {
             AlertDialog(
                 onDismissRequest = { showDialog.value = false },
@@ -165,6 +175,7 @@ fun Welcome() {
 fun ZoneGrid(
     zones: List<Pair<String, Int>>,
     modifier: Modifier = Modifier,
+    onZoneClick: () -> Unit,
     onAddZoneClick: () -> Unit
 ) {
     val CustomBlue = Color(0xFF02A9FF)
@@ -185,10 +196,12 @@ fun ZoneGrid(
                     .size(150.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surface)
+                    .clickable { onZoneClick() }, // Redirige al hacer clic
+                contentAlignment = Alignment.Center
             ) {
                 Image(
                     painter = painterResource(id = imageRes),
-                    contentDescription = "Imagen de $zoneName",
+                    contentDescription = null,
                     modifier = Modifier
                         .fillMaxSize()
                         .clip(RoundedCornerShape(8.dp))
@@ -215,12 +228,12 @@ fun ZoneGrid(
                     .size(150.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surface)
-                    .clickable { onAddZoneClick() },
+                    .clickable { onAddZoneClick() }, // Muestra el diálogo
                 contentAlignment = Alignment.TopCenter
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.add),
-                    contentDescription = "Agregar nueva zona",
+                    contentDescription = null,
                     modifier = Modifier
                         .fillMaxSize()
                         .clip(RoundedCornerShape(8.dp))
@@ -241,3 +254,4 @@ fun ZoneGrid(
         }
     }
 }
+
