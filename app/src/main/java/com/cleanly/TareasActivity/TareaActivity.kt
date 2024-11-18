@@ -1,4 +1,4 @@
-package com.cleanly
+package com.cleanly.TareasActivity
 
 import android.content.Intent
 import android.net.Uri
@@ -16,17 +16,19 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberImagePainter
-import com.cleanly.TareasActivity.CRUDTareas
-import com.cleanly.TareasActivity.TareasBD
+import com.cleanly.MainActivity
+import com.cleanly.ProfileScreen
+import com.cleanly.R
 import com.cleanly.ui.theme.CleanlyTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.android.gms.auth.api.signin.GoogleSignIn
 
 @OptIn(ExperimentalMaterial3Api::class)
 class TareaActivity : ComponentActivity() {
@@ -47,21 +49,25 @@ class TareaActivity : ComponentActivity() {
 
     @Composable
     fun TareaActivityContent(auth: FirebaseAuth, db: FirebaseFirestore) {
-        val taskList = remember { mutableStateListOf<Pair<String, Int>>() }
-        val updateTaskList: (List<Pair<String, Int>>) -> Unit = { newList ->
+        val taskList = remember { mutableStateListOf<Tarea>() }
+        val updateTaskList: (List<Tarea>) -> Unit = { newList ->
             taskList.clear()
             taskList.addAll(newList)
         }
+        var photoUrl by remember { mutableStateOf<Uri?>(null) }
 
-        TareasBD.cargarTareasDesdeFirestore(db) { listaTareas ->
-            updateTaskList(listaTareas.map { it.nombre to it.puntos })
+        // Cargar foto de perfil desde Firestore
+        LaunchedEffect(Unit) {
+            obtenerFotoPerfilDesdeFirestore(db) { uri ->
+                photoUrl = uri
+            }
+            TareasBD.cargarTareasDesdeFirestore(db) { listaTareas ->
+                updateTaskList(listaTareas)
+            }
         }
 
-        val account = GoogleSignIn.getLastSignedInAccount(this)
-        val photoUrl: Uri? = account?.photoUrl
-
         Column {
-            TopBar(auth = auth, photoUrl = photoUrl) {
+            TopBar(auth = auth, db = db, photoUrl = photoUrl) {
                 auth.signOut()
                 val intent = Intent(this@TareaActivity, MainActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -74,17 +80,20 @@ class TareaActivity : ComponentActivity() {
             CRUDTareas(
                 db = db,
                 taskList = taskList,
-                onCreate = { reloadTaskList(db, updateTaskList) },
-                onDelete = { reloadTaskList(db, updateTaskList) },
-                onList = { reloadTaskList(db, updateTaskList) },
-                onEdit = { reloadTaskList(db, updateTaskList) },
-                onTaskListUpdated = updateTaskList
+                onCreate = { TareasBD.cargarTareasDesdeFirestore(db, updateTaskList) },
+                onDelete = { TareasBD.cargarTareasDesdeFirestore(db, updateTaskList) },
+                onList = { TareasBD.cargarTareasDesdeFirestore(db, updateTaskList) },
+                onEdit = { TareasBD.cargarTareasDesdeFirestore(db, updateTaskList) },
+                onTaskListUpdated = updateTaskList,
+                onTaskCompleted = {
+                    TareasBD.actualizarEstadisticas(db, puntosGanados = 10)
+                }
             )
         }
     }
 
     @Composable
-    fun TopBar(auth: FirebaseAuth, photoUrl: Uri?, onLogout: () -> Unit) {
+    fun TopBar(auth: FirebaseAuth, db: FirebaseFirestore, photoUrl: Uri?, onLogout: () -> Unit) {
         TopAppBar(
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -94,6 +103,8 @@ class TareaActivity : ComponentActivity() {
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape)
+                            .background(Color.Gray),
+                        contentScale = ContentScale.Crop
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
@@ -144,18 +155,22 @@ class TareaActivity : ComponentActivity() {
         )
     }
 
-    private fun reloadTaskList(
-        db: FirebaseFirestore,
-        updateTaskList: (List<Pair<String, Int>>) -> Unit
-    ) {
-        TareasBD.cargarTareasDesdeFirestore(db) { listaTareas ->
-            updateTaskList(listaTareas.map { it.nombre to it.puntos })
+    private fun obtenerFotoPerfilDesdeFirestore(db: FirebaseFirestore, onSuccess: (Uri?) -> Unit) {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
+        if (userId != null) {
+            val userRef = db.collection("Usuarios").document(userId)
+            userRef.get()
+                .addOnSuccessListener { document ->
+                    val photoUrl = document.getString("photoUrl")
+                    onSuccess(photoUrl?.let { Uri.parse(it) })
+                }
+                .addOnFailureListener {
+                    onSuccess(null)
+                }
+        } else {
+            onSuccess(null)
         }
     }
 }
-
-
-
-
 
 

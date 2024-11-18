@@ -20,7 +20,7 @@
             android:name=".WelcomeActivity.WelcomActivity"
             android:exported="false" />
         <activity
-            android:name=".TareaActivity"
+            android:name=".TareasActivity.TareaActivity"
             android:exported="false" />
         <activity
             android:name=".ProfileScreen"
