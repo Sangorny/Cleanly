@@ -106,10 +106,10 @@ fun Welcome() {
                         ) {
                             val defaultImages = listOf(
                                 R.drawable.default1,
-                                R.drawable.default1,
-                                R.drawable.default1,
-                                R.drawable.default1,
-                                R.drawable.default1
+                                R.drawable.default2,
+                                R.drawable.default3,
+                                R.drawable.default4,
+                                R.drawable.default5
                             )
 
                             items(defaultImages) { imageRes ->
