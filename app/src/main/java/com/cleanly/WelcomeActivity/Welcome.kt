@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.sp
 import com.cleanly.R
 
 @Composable
-fun Welcome() {
+fun Welcome(onZoneClick: () -> Unit) { // Recibe una función callback
     val zones = remember {
         mutableStateListOf(
             "Baño" to R.drawable.bano,
@@ -39,8 +39,6 @@ fun Welcome() {
     val showDialog = remember { mutableStateOf(false) }
     val newZoneName = remember { mutableStateOf("") }
     val selectedImage = remember { mutableStateOf<Int?>(null) }
-
-    val context = LocalContext.current // Contexto necesario para lanzar actividades
 
     Box(
         modifier = Modifier
@@ -78,9 +76,8 @@ fun Welcome() {
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
                 onZoneClick = {
-                    // Redirige a TareaActivity al hacer clic en un recuadro
-                    val intent = Intent(context, TareaActivity::class.java)
-                    context.startActivity(intent)
+                    // Llama al callback cuando se haga clic en una zona
+                    onZoneClick()
                 },
                 onAddZoneClick = { showDialog.value = true }
             )
@@ -88,7 +85,6 @@ fun Welcome() {
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // Diálogo para agregar una nueva zona
         if (showDialog.value) {
             AlertDialog(
                 onDismissRequest = { showDialog.value = false },
