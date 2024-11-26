@@ -1,42 +1,58 @@
 package com.cleanly.WelcomeActivity
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.PieChart
+import androidx.compose.material.icons.filled.ShowChart
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+
 
 @Composable
-fun BarraTareas(completedTasks: Int, totalTasks: Int) {
-    val progress = if (totalTasks > 0) completedTasks.toFloat() / totalTasks else 0f
+fun WelcomeBarra(onNavigate: (String) -> Unit) {
+    val selectedItem = remember { mutableStateOf(0) }
+    val items = listOf("Mis Tareas", "Zonas", "Estadísticas")
+    val icons = listOf(Icons.Default.Home, Icons.Default.List, Icons.Default.ShowChart)
 
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
+    NavigationBar(
+        containerColor = Color(0xFF0D47A1),
+        contentColor = Color.White
     ) {
-        LinearProgressIndicator(
-            progress = progress,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(8.dp)
-                .clip(RoundedCornerShape(50)),
-            color = Color.Green
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Completadas: $completedTasks / $totalTasks",
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.White
-        )
+        items.forEachIndexed { index, item ->
+            NavigationBarItem(
+                selected = selectedItem.value == index,
+                onClick = {
+                    selectedItem.value = index
+                    onNavigate(item)
+                },
+                icon = {
+                    Icon(
+                        imageVector = icons[index],
+                        contentDescription = item
+                    )
+                },
+                label = {
+                    Text(
+                        text = item,
+                        color = if (selectedItem.value == index) Color.White else Color.Gray
+                    )
+                },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = Color.White,
+                    selectedTextColor = Color.White,
+                    unselectedIconColor = Color.Gray,
+                    unselectedTextColor = Color.Gray
+                )
+            )
+        }
     }
 }

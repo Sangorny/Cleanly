@@ -1,9 +1,11 @@
 package com.cleanly
 
-import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import com.cleanly.ui.theme.CleanlyTheme
 
 class WelcomActivity : ComponentActivity() {
@@ -13,14 +15,7 @@ class WelcomActivity : ComponentActivity() {
 
         setContent {
             CleanlyTheme {
-                // Llama al composable Welcome y define la lógica de navegación
-                Welcome(
-                    onZoneClick = {
-                        // Navegar a TareaActivity
-                        val intent = Intent(this, TareaActivity::class.java)
-                        startActivity(intent)
-                    }
-                )
+                MainScreen()
             }
         }
     }

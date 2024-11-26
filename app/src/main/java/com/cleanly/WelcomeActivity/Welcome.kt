@@ -1,14 +1,11 @@
 package com.cleanly
 
-import android.content.Intent
-import androidx.compose.foundation.Image
+
+import com.cleanly.shared.welcomeBD
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,52 +13,46 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.cleanly.R
+import com.cleanly.WelcomeActivity.WelcomeBarra
+import com.cleanly.ZonaActivity.ZonasActivity
+import com.google.firebase.firestore.FirebaseFirestore
+import com.cleanly.shared.Tarea
 
 @Composable
-fun Welcome(onZoneClick: () -> Unit) { // Recibe una función callback
-    val zones = remember {
-        mutableStateListOf(
-            "Baño" to R.drawable.bano,
-            "Cocina" to R.drawable.cocina,
-            "Sala" to R.drawable.salon,
-            "Dormitorio" to R.drawable.dormitorio
-        )
+fun Welcome() {
+    Text(text = "Mis Tareas", style = MaterialTheme.typography.headlineMedium)
+    val db = FirebaseFirestore.getInstance()
+    val tabTitles = listOf("Asignadas", "Pendientes", "De Otros")
+    var selectedTabIndex by remember { mutableStateOf(0) }
+    var tareas by remember { mutableStateOf<List<Tarea>>(emptyList()) }
+
+    // Cargar las tareas desde Firebase al inicio
+    LaunchedEffect(Unit) {
+        welcomeBD.cargarTareasDesdeFirestore(db) { listaTareas ->
+            tareas = listaTareas
+        }
     }
-    val showDialog = remember { mutableStateOf(false) }
-    val newZoneName = remember { mutableStateOf("") }
-    val selectedImage = remember { mutableStateOf<Int?>(null) }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF0D47A1),
-                        Color(0xFF00E676)
-                    )
+                Brush.verticalGradient(
+                    listOf(Color(0xFF0D47A1), Color(0xFF00E676))
                 )
             ),
         contentAlignment = Alignment.TopCenter
     ) {
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
             Text(
-                text = "Zonas",
+                text = "Tareas",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
@@ -69,185 +60,104 @@ fun Welcome(onZoneClick: () -> Unit) { // Recibe una función callback
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            ZoneGrid(
-                zones = zones,
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                onZoneClick = {
-                    // Llama al callback cuando se haga clic en una zona
-                    onZoneClick()
-                },
-                onAddZoneClick = { showDialog.value = true }
-            )
+            TabRow(
+                selectedTabIndex = selectedTabIndex,
+                containerColor = Color(0xFF0D47A1),
+                contentColor = Color.White
+            ) {
+                tabTitles.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTabIndex == index,
+                        onClick = { selectedTabIndex = index },
+                        text = {
+                            Text(
+                                text = title,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (selectedTabIndex == index) Color.White else Color.Gray
+                            )
+                        }
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
-        }
 
-        if (showDialog.value) {
-            AlertDialog(
-                onDismissRequest = { showDialog.value = false },
-                title = { Text(text = "Nueva Zona", fontWeight = FontWeight.Bold) },
-                text = {
-                    Column {
-                        Text(text = "Introduce el nombre de la nueva zona:")
-                        Spacer(modifier = Modifier.height(8.dp))
-                        TextField(
-                            value = newZoneName.value,
-                            onValueChange = { newZoneName.value = it },
-                            placeholder = { Text("Nombre de la zona") }
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Text(text = "Selecciona una imagen:")
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(3),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.height(150.dp)
-                        ) {
-                            val defaultImages = listOf(
-                                R.drawable.default1,
-                                R.drawable.default2,
-                                R.drawable.default3,
-                                R.drawable.default4,
-                                R.drawable.default5
-                            )
-
-                            items(defaultImages) { imageRes ->
-                                Box(
-                                    modifier = Modifier
-                                        .size(50.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(if (selectedImage.value == imageRes) Color.LightGray else Color.Transparent)
-                                        .clickable { selectedImage.value = imageRes },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Image(
-                                        painter = painterResource(id = imageRes),
-                                        contentDescription = null,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                }
-                            }
-                        }
-                    }
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            if (newZoneName.value.isNotBlank() && selectedImage.value != null) {
-                                zones.add(newZoneName.value.trim() to selectedImage.value!!)
-                                newZoneName.value = ""
-                                selectedImage.value = null
-                                showDialog.value = false
-                            }
-                        }
-                    ) {
-                        Text("Confirmar")
-                    }
-                },
-                dismissButton = {
-                    Button(
-                        onClick = {
-                            newZoneName.value = ""
-                            selectedImage.value = null
-                            showDialog.value = false
-                        }
-                    ) {
-                        Text("Cancelar")
-                    }
-                }
-            )
+            // Mostrar tareas filtradas según la pestaña seleccionada
+            when (selectedTabIndex) {
+                0 -> MostrarTareasFiltradas(tareas.filter { it.usuario == "Antonio" }) // Asignadas
+                1 -> MostrarTareasFiltradas(tareas.filter { it.usuario.isNullOrEmpty() })      // Pendientes
+                2 -> MostrarTareasFiltradas(tareas.filter { it.usuario != "Antonio" && !it.usuario.isNullOrEmpty()}) // De Otros
+            }
         }
     }
 }
 
 @Composable
-fun ZoneGrid(
-    zones: List<Pair<String, Int>>,
-    modifier: Modifier = Modifier,
-    onZoneClick: () -> Unit,
-    onAddZoneClick: () -> Unit
-) {
-    val CustomBlue = Color(0xFF02A9FF)
-
-    val BernadetteFontFamily = FontFamily(
-        Font(R.font.bernadette)
-    )
-
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+fun MostrarTareasFiltradas(tareasFiltradas: List<Tarea>) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        items(zones) { (zoneName, imageRes) ->
-            Box(
-                modifier = Modifier
-                    .size(150.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.surface)
-                    .clickable { onZoneClick() }, // Redirige al hacer clic
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(id = imageRes),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(8.dp))
-                )
-                Text(
-                    text = zoneName,
-                    color = CustomBlue,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    style = TextStyle(
-                        fontFamily = BernadetteFontFamily
-                    ),
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 6.dp)
-                )
-            }
+        items(tareasFiltradas) { tarea ->
+            TareaItem(tarea)
         }
+    }
+}
 
-        // Cuadro "Agregar"
-        item {
-            Box(
-                modifier = Modifier
-                    .size(150.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.surface)
-                    .clickable { onAddZoneClick() }, // Muestra el diálogo
-                contentAlignment = Alignment.TopCenter
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.add),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(8.dp))
-                )
+@Composable
+fun TareaItem(tarea: Tarea) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.Gray.copy(alpha = 0.3f))
+            .padding(16.dp)
+            .clip(MaterialTheme.shapes.medium)
+    ) {
+        Column {
+            Text(
+                text = tarea.nombre,
+                color = Color.White,
+                style = MaterialTheme.typography.bodyLarge
+            )
+            if (tarea.usuario != null) {
                 Text(
-                    text = "Agregar",
-                    color = CustomBlue,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    style = TextStyle(
-                        fontFamily = BernadetteFontFamily
-                    ),
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 6.dp)
+                    text = "Asignado a: ${tarea.usuario}",
+                    color = Color.LightGray,
+                    style = MaterialTheme.typography.bodySmall
                 )
             }
         }
     }
 }
+
+@Composable
+fun MainScreen() {
+    var currentScreen by remember { mutableStateOf("Mis Tareas") }
+
+    Scaffold(
+        bottomBar = {
+            WelcomeBarra { selectedScreen ->
+                currentScreen = selectedScreen
+            }
+        }
+    ) { paddingValues ->
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            when (currentScreen) {
+                "Mis Tareas" -> Welcome()       // Llama al composable de las tareas
+                "Zonas" -> ZonasActivity()    // Llama al composable de Zonas
+
+            }
+        }
+    }
+}
+
+
 
