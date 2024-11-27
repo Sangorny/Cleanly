@@ -2,8 +2,10 @@ package com.cleanly.TareasActivity
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,21 +21,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.firestore.FirebaseFirestore
 
-data class Tarea(
-    val nombre: String,
-    val puntos: Int,
-    var isChecked: Boolean = false
-)
-
 @Composable
 fun CRUDTareas(
     db: FirebaseFirestore,
-    taskList: List<Pair<String, Int>>,
+    taskList: List<Tarea>,
     onCreate: () -> Unit,
     onDelete: () -> Unit,
     onList: () -> Unit,
     onEdit: () -> Unit,
-    onTaskListUpdated: (List<Pair<String, Int>>) -> Unit
+    onTaskListUpdated: (List<Tarea>) -> Unit,
+    onTaskCompleted: () -> Unit
 ) {
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -44,80 +41,6 @@ fun CRUDTareas(
     var taskName by remember { mutableStateOf("") }
     var taskPoints by remember { mutableStateOf("") }
     var nombreOriginal by remember { mutableStateOf("") }
-    val handleCreate = {
-        if (taskName.isNotBlank() && taskPoints.isNotBlank()) {
-            val puntos = taskPoints.toIntOrNull() ?: 0
-            TareasBD.agregarTareaAFirestore(
-                db = db,
-                nombre = taskName,
-                puntos = puntos,
-                context = context,
-                onSuccess = {
-                    showSnackbarMessage = "Tarea añadida correctamente"
-                    onCreate()
-                    taskName = ""
-                    taskPoints = ""
-                    TareasBD.cargarTareasDesdeFirestore(db) { tareasRecargadas ->
-                        onTaskListUpdated(tareasRecargadas.map { it.nombre to it.puntos })
-                        showDialog = false
-                    }
-                }
-            )
-        } else {
-            showDialog = false
-        }
-    }
-    val handleEdit = {
-        val tareasMarcadas = taskList.filter { tarea -> checkedStates[tarea.first] == true }
-
-        if (tareasMarcadas.size != 1) {
-            showSnackbarMessage = if (tareasMarcadas.isEmpty()) {
-                "Selecciona una tarea para editar"
-            } else {
-                "No puedes editar más de una tarea a la vez"
-            }
-        } else {
-            val tareaSeleccionada = tareasMarcadas.first()
-            nombreOriginal = tareaSeleccionada.first
-            taskName = tareaSeleccionada.first
-            taskPoints = tareaSeleccionada.second.toString()
-            showEditDialog = true
-        }
-    }
-    val handleDelete = {
-        val tareasMarcadasCount = checkedStates.values.count { it }
-        val nombresTareasMarcadas = taskList
-            .filter { tarea -> checkedStates[tarea.first] == true }
-            .map { it.first }
-
-        if (nombresTareasMarcadas.isNotEmpty()) {
-            TareasBD.eliminarTareasDeFirestore(
-                db = db,
-                nombresDeTareas = nombresTareasMarcadas,
-                context = context,
-                onSuccess = {
-                    showSnackbarMessage = "$tareasMarcadasCount tareas borradas correctamente"
-                    checkedStates.clear()
-                    TareasBD.cargarTareasDesdeFirestore(db) { tareasRecargadas ->
-                        onTaskListUpdated(tareasRecargadas.map { it.nombre to it.puntos })
-                    }
-                    onDelete()
-                },
-                onFailure = {
-                    showSnackbarMessage = "Error al borrar tareas"
-                }
-            )
-        } else {
-            showSnackbarMessage = "No hay tareas seleccionadas para borrar"
-        }
-    }
-
-    val onList = {
-        TareasBD.cargarTareasDesdeFirestore(db) { listaTareas ->
-            onTaskListUpdated(listaTareas.map { it.nombre to it.puntos })
-            showSnackbarMessage = "Lista de tareas actualizada"
-        }
-    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
@@ -128,132 +51,213 @@ fun CRUDTareas(
                 .padding(paddingValues)
                 .background(
                     brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF0D47A1),
-                            Color(0xFF00E676)
-                        )
+                        colors = listOf(Color(0xFF0D47A1), Color(0xFF00E676))
                     )
                 )
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            CRUDboton(
-                onCreate = { showDialog = true },
-                onEdit = handleEdit,
-                onDelete = handleDelete,
-                onList = onList
-            )
+            // Primera fila de botones
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+            ) {
+                Button(onClick = { showDialog = true }, modifier = Modifier.weight(1f)) {
+                    Text("Crear Tarea")
+                }
+                Button(onClick = onList, modifier = Modifier.weight(1f)) {
+                    Text("Listar Tareas")
+                }
+            }
+
+            // Segunda fila de botones
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+            ) {
+                Button(onClick = onEdit, modifier = Modifier.weight(1f)) {
+                    Text("Editar Tarea")
+                }
+                Button(onClick = onDelete, modifier = Modifier.weight(1f)) {
+                    Text("Borrar Tarea")
+                }
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Título "Lista de Tareas"
             Text(
                 text = "Lista de Tareas",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = Color.White,
+                modifier = Modifier.padding(bottom = 16.dp)
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            // Lista de tareas con scroll si excede el tamaño de la pantalla
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(vertical = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                taskList.forEach { tarea ->
+                    TaskRow(
+                        task = tarea.nombre,
+                        puntos = tarea.puntos,
+                        isChecked = checkedStates[tarea.nombre] ?: false,
+                        onCheckedChange = { isChecked -> checkedStates[tarea.nombre] = isChecked }
+                    )
+                }
+            }
 
-            taskList.forEach { (task, puntos) ->
-                TaskRow(
-                    task = task,
-                    puntos = puntos,
-                    isChecked = checkedStates[task] ?: false,
-                    onCheckedChange = { isChecked -> checkedStates[task] = isChecked }
+            // Botón "Completar Tareas" en la parte inferior y centrado
+            Button(
+                onClick = {
+                    val tareasCompletadas = taskList.filter { tarea -> checkedStates[tarea.nombre] == true }
+                    if (tareasCompletadas.isNotEmpty()) {
+                        tareasCompletadas.forEach { tarea ->
+                            TareasBD.marcarTareaComoCompletada(
+                                db = db,
+                                tareaNombre = tarea.nombre,
+                                onSuccess = {
+                                    showSnackbarMessage = "Tarea completada: ${tarea.nombre}"
+                                    onTaskCompleted()
+                                    checkedStates[tarea.nombre] = false
+                                },
+                                onFailure = {
+                                    showSnackbarMessage = "Error al completar tarea: ${tarea.nombre}"
+                                }
+                            )
+                        }
+                    } else {
+                        showSnackbarMessage = "No hay tareas seleccionadas para completar"
+                    }
+                },
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(top = 16.dp)
+            ) {
+                Text("Completar Tareas")
+            }
+
+            // Mostrar Snackbar
+            showSnackbarMessage?.let { message ->
+                LaunchedEffect(message) {
+                    snackbarHostState.showSnackbar(message)
+                    showSnackbarMessage = null
+                }
+            }
+
+            // Diálogo para Crear Tarea
+            if (showDialog) {
+                AlertDialog(
+                    onDismissRequest = { showDialog = false },
+                    title = { Text("Añadir Nueva Tarea") },
+                    text = {
+                        Column {
+                            TextField(
+                                value = taskName,
+                                onValueChange = { taskName = it },
+                                label = { Text("Nombre de la Tarea") }
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            TextField(
+                                value = taskPoints,
+                                onValueChange = { taskPoints = it },
+                                label = { Text("Puntos") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        Button(onClick = {
+                            val puntos = taskPoints.toIntOrNull() ?: 0
+                            TareasBD.agregarTareaAFirestore(
+                                db = db,
+                                nombre = taskName,
+                                puntos = puntos,
+                                context = context,
+                                onSuccess = {
+                                    showSnackbarMessage = "Tarea añadida correctamente"
+                                    onCreate()
+                                    taskName = ""
+                                    taskPoints = ""
+                                    TareasBD.cargarTareasDesdeFirestore(db) { tareasRecargadas ->
+                                        onTaskListUpdated(tareasRecargadas)
+                                        showDialog = false
+                                    }
+                                }
+                            )
+                        }) {
+                            Text("Añadir")
+                        }
+                    },
+                    dismissButton = {
+                        Button(onClick = { showDialog = false }) {
+                            Text("Cancelar")
+                        }
+                    }
                 )
             }
-        }
 
-        showSnackbarMessage?.let { message ->
-            LaunchedEffect(message) {
-                snackbarHostState.showSnackbar(message)
-                showSnackbarMessage = null
+            // Diálogo para Editar Tarea
+            if (showEditDialog) {
+                AlertDialog(
+                    onDismissRequest = { showEditDialog = false },
+                    title = { Text("Editar Tarea") },
+                    text = {
+                        Column {
+                            TextField(
+                                value = taskName,
+                                onValueChange = { taskName = it },
+                                label = { Text("Nombre de la Tarea") }
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            TextField(
+                                value = taskPoints,
+                                onValueChange = { taskPoints = it },
+                                label = { Text("Puntos") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        Button(onClick = {
+                            val puntos = taskPoints.toIntOrNull() ?: 0
+                            TareasBD.actualizarTareaEnFirestore(
+                                db = db,
+                                nombreOriginal = nombreOriginal,
+                                nuevoNombre = taskName,
+                                nuevosPuntos = puntos,
+                                context = context,
+                                onSuccess = {
+                                    showSnackbarMessage = "Tarea actualizada correctamente"
+                                    showEditDialog = false
+                                    onList()
+                                },
+                                onFailure = {
+                                    showSnackbarMessage = "Error al actualizar la tarea"
+                                    showEditDialog = false
+                                }
+                            )
+                        }) {
+                            Text("Aceptar")
+                        }
+                    },
+                    dismissButton = {
+                        Button(onClick = { showEditDialog = false }) {
+                            Text("Cancelar")
+                        }
+                    }
+                )
             }
-        }
-        if (showDialog) {
-            AlertDialog(
-                onDismissRequest = { showDialog = false },
-                title = { Text("Añadir Nueva Tarea") },
-                text = {
-                    Column {
-                        TextField(
-                            value = taskName,
-                            onValueChange = { taskName = it },
-                            label = { Text("Nombre de la Tarea") }
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        TextField(
-                            value = taskPoints,
-                            onValueChange = { taskPoints = it },
-                            label = { Text("Puntos") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                        )
-                    }
-                },
-                confirmButton = {
-                    Button(onClick = handleCreate) {
-                        Text("Añadir")
-                    }
-                },
-                dismissButton = {
-                    Button(onClick = { showDialog = false }) {
-                        Text("Cancelar")
-                    }
-                }
-            )
-        }
-
-        // Diálogo para editar la tarea seleccionada
-        if (showEditDialog) {
-            AlertDialog(
-                onDismissRequest = { showEditDialog = false },
-                title = { Text("Editar Tarea") },
-                text = {
-                    Column {
-                        TextField(
-                            value = taskName,
-                            onValueChange = { taskName = it },
-                            label = { Text("Nombre de la Tarea") }
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        TextField(
-                            value = taskPoints,
-                            onValueChange = { taskPoints = it },
-                            label = { Text("Puntos") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                        )
-                    }
-                },
-                confirmButton = {
-                    Button(onClick = {
-                        val puntos = taskPoints.toIntOrNull() ?: 0
-                        TareasBD.actualizarTareaEnFirestore(
-                            db = db,
-                            nombreOriginal = nombreOriginal,
-                            nuevoNombre = taskName,
-                            nuevosPuntos = puntos,
-                            context = context,
-                            onSuccess = {
-                                showSnackbarMessage = "Tarea actualizada correctamente"
-                                showEditDialog = false
-                                onList()
-                            },
-                            onFailure = {
-                                showSnackbarMessage = "Error al actualizar la tarea"
-                                showEditDialog = false
-                            }
-                        )
-                    }) {
-                        Text("Aceptar")
-                    }
-                },
-                dismissButton = {
-                    Button(onClick = { showEditDialog = false }) {
-                        Text("Cancelar")
-                    }
-                }
-            )
         }
     }
 }
@@ -298,3 +302,5 @@ fun TaskRow(
     }
     Spacer(modifier = Modifier.height(8.dp))
 }
+
+
