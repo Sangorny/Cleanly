@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.rememberImagePainter
 import com.cleanly.TareasActivity.CRUDTareas
 import com.cleanly.TareasActivity.TareasBD
+import com.cleanly.WelcomeActivity.ProfileScreen
 import com.cleanly.ui.theme.CleanlyTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore

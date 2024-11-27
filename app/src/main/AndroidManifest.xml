@@ -23,8 +23,14 @@
             android:name=".TareaActivity"
             android:exported="false" />
         <activity
-            android:name=".ProfileScreen"
+            android:name=".WelcomeActivity.ProfileScreen"
             android:exported="true" />
+
+        <!-- Agrega la actividad GroupManagementActivity aquí -->
+        <activity
+            android:name=".WelcomeActivity.GroupManagementActivity"
+            android:exported="true" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -38,3 +44,4 @@
         </activity>
     </application>
 </manifest>
+

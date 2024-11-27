@@ -1,4 +1,4 @@
-package com.cleanly
+package com.cleanly.WelcomeActivity
 
 import android.content.Context
 import android.net.Uri
@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberImagePainter
+import com.cleanly.R
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
 
