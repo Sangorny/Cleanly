@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberImagePainter
 import com.cleanly.TareasActivity.CRUDTareas
+import com.cleanly.TareasActivity.Tarea
 import com.cleanly.TareasActivity.TareasBD
 import com.cleanly.WelcomeActivity.ProfileScreen
 import com.cleanly.ui.theme.CleanlyTheme
@@ -48,14 +49,17 @@ class TareaActivity : ComponentActivity() {
 
     @Composable
     fun TareaActivityContent(auth: FirebaseAuth, db: FirebaseFirestore) {
-        val taskList = remember { mutableStateListOf<Pair<String, Int>>() }
-        val updateTaskList: (List<Pair<String, Int>>) -> Unit = { newList ->
+        // Cambia el tipo de taskList a List<Tarea> en lugar de List<Pair<String, Int>>
+        val taskList = remember { mutableStateListOf<Tarea>() }
+
+        val updateTaskList: (List<Tarea>) -> Unit = { newList ->
             taskList.clear()
             taskList.addAll(newList)
         }
 
         TareasBD.cargarTareasDesdeFirestore(db) { listaTareas ->
-            updateTaskList(listaTareas.map { it.nombre to it.puntos })
+            // Ya no es necesario mapear, directamente asignamos la lista de Tarea
+            updateTaskList(listaTareas)
         }
 
         val account = GoogleSignIn.getLastSignedInAccount(this)
@@ -74,15 +78,20 @@ class TareaActivity : ComponentActivity() {
 
             CRUDTareas(
                 db = db,
-                taskList = taskList,
+                taskList = taskList,  // Aquí ya pasamos una lista de Tarea
                 onCreate = { reloadTaskList(db, updateTaskList) },
                 onDelete = { reloadTaskList(db, updateTaskList) },
                 onList = { reloadTaskList(db, updateTaskList) },
                 onEdit = { reloadTaskList(db, updateTaskList) },
-                onTaskListUpdated = updateTaskList
+                onTaskListUpdated = updateTaskList,
+                onTaskCompleted = {
+                    // Acción cuando una tarea se completa
+                    println("Tarea completada")
+                }
             )
         }
     }
+
 
     @Composable
     fun TopBar(auth: FirebaseAuth, photoUrl: Uri?, onLogout: () -> Unit) {
@@ -147,13 +156,15 @@ class TareaActivity : ComponentActivity() {
 
     private fun reloadTaskList(
         db: FirebaseFirestore,
-        updateTaskList: (List<Pair<String, Int>>) -> Unit
+        updateTaskList: (List<Tarea>) -> Unit
     ) {
+        // Asegúrate de que la función cargue las tareas correctamente y devuelva una lista de Tarea
         TareasBD.cargarTareasDesdeFirestore(db) { listaTareas ->
-            updateTaskList(listaTareas.map { it.nombre to it.puntos })
+            updateTaskList(listaTareas)  // No necesitas hacer map() si ya devuelve List<Tarea>
         }
     }
 }
+
 
 
 
