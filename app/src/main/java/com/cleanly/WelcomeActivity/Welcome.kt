@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -37,21 +38,34 @@ import com.cleanly.shared.welcomeBD
 fun Welcome() {
     val auth = FirebaseAuth.getInstance()
     val currentUser = auth.currentUser
-    val photoUrl: Uri? = currentUser?.photoUrl
-    val context = LocalContext.current // Obtener el contexto para las acciones del menú
+    val context = LocalContext.current
 
-    val db = FirebaseFirestore.getInstance()
-    val tabTitles = listOf("Asignadas", "Pendientes", "De Otros")
-    var selectedTabIndex by remember { mutableStateOf(0) }
-    var tareas by remember { mutableStateOf<List<Tarea>>(emptyList()) }
+    // Verifica si el usuario está logueado y recupera la información de la cuenta
+    val displayName = currentUser?.displayName ?: "Usuario"
+    var photoUrl by remember { mutableStateOf(currentUser?.photoUrl) }
 
     // Cargar las tareas desde Firebase al inicio
+    var tareas by remember { mutableStateOf<List<Tarea>>(emptyList()) }
     LaunchedEffect(Unit) {
-        welcomeBD.cargarTareasDesdeFirestore(db) { listaTareas ->
+        welcomeBD.cargarTareasDesdeFirestore(FirebaseFirestore.getInstance()) { listaTareas ->
             tareas = listaTareas
         }
     }
 
+    // Recargar el perfil cuando se inicie sesión
+    LaunchedEffect(currentUser) {
+        currentUser?.reload()?.addOnCompleteListener {
+            photoUrl = currentUser.photoUrl
+        }
+    }
+
+    // Lista de títulos de pestañas
+    val tabTitles = listOf("Asignadas", "Pendientes", "De Otros")
+
+    // Índice de la pestaña seleccionada (inicialmente en la primera pestaña)
+    var selectedTabIndex by remember { mutableStateOf(0) }
+
+    // Scaffold para contener el topBar, contenido y la barra inferior
     Scaffold(
         topBar = {
             TopAppBar(
@@ -62,17 +76,19 @@ fun Welcome() {
                     ) {
                         // Avatar del usuario
                         Image(
-                            painter = if (photoUrl != null) rememberImagePainter(photoUrl) else painterResource(id = R.drawable.default_avatar),
-                            contentDescription = "Avatar",
+                            painter = rememberImagePainter(data = photoUrl ?: R.drawable.default_avatar),
+                            contentDescription = "Foto de perfil",
                             modifier = Modifier
-                                .size(40.dp)
+                                .size(50.dp)
                                 .clip(CircleShape)
+                                .background(Color.Gray),
+                            contentScale = ContentScale.Crop
                         )
                         Spacer(modifier = Modifier.width(8.dp))
 
                         // Nombre del usuario
                         Text(
-                            text = currentUser?.displayName ?: "Usuario",
+                            text = displayName,
                             fontSize = 20.sp,
                             color = Color.White
                         )
@@ -80,13 +96,9 @@ fun Welcome() {
                 },
                 actions = {
                     var expanded by remember { mutableStateOf(false) }
-
-                    // Botón de menú desplegable (tres puntos)
                     IconButton(onClick = { expanded = !expanded }) {
                         Icon(Icons.Default.MoreVert, contentDescription = "Menú", tint = Color.White)
                     }
-
-                    // Opciones del menú desplegable
                     DropdownMenu(
                         expanded = expanded,
                         onDismissRequest = { expanded = false },
@@ -123,65 +135,32 @@ fun Welcome() {
             )
         },
         content = { paddingValues ->
-            Box(
+            // Contenido de la pantalla de bienvenida
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(Color(0xFF0D47A1), Color(0xFF00E676))
-                        )
-                    )
-                    .padding(paddingValues),
-                contentAlignment = Alignment.TopCenter
+                    .padding(paddingValues)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp)
-                ) {
-                    Text(
-                        text = "Tareas",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
+                Text(
+                    text = "Tareas",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-                    TabRow(
-                        selectedTabIndex = selectedTabIndex,
-                        containerColor = Color(0xFF0D47A1),
-                        contentColor = Color.White
-                    ) {
-                        tabTitles.forEachIndexed { index, title ->
-                            Tab(
-                                selected = selectedTabIndex == index,
-                                onClick = { selectedTabIndex = index },
-                                text = {
-                                    Text(
-                                        text = title,
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (selectedTabIndex == index) Color.White else Color.Gray
-                                    )
-                                }
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Mostrar tareas filtradas según la pestaña seleccionada
-                    when (selectedTabIndex) {
-                        0 -> MostrarTareasFiltradas(tareas.filter { it.usuario == "Antonio" }) // Asignadas
-                        1 -> MostrarTareasFiltradas(tareas.filter { it.usuario.isNullOrEmpty() })      // Pendientes
-                        2 -> MostrarTareasFiltradas(tareas.filter { it.usuario != "Antonio" && !it.usuario.isNullOrEmpty()}) // De Otros
-                    }
+                // Mostrar tareas filtradas según la pestaña seleccionada
+                when (selectedTabIndex) {
+                    0 -> MostrarTareasFiltradas(tareas.filter { it.usuario == "Antonio" }) // Asignadas
+                    1 -> MostrarTareasFiltradas(tareas.filter { it.usuario.isNullOrEmpty() }) // Pendientes
+                    2 -> MostrarTareasFiltradas(tareas.filter { it.usuario != "Antonio" && !it.usuario.isNullOrEmpty() }) // De Otros
                 }
             }
         }
     )
 }
+
 
 @Composable
 fun MostrarTareasFiltradas(tareasFiltradas: List<Tarea>) {
@@ -247,6 +226,7 @@ fun MainScreen() {
         }
     }
 }
+
 
 
 

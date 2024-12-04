@@ -20,9 +20,6 @@
             android:name=".WelcomActivity"
             android:exported="false" />
         <activity
-            android:name=".TareasActivity.TareaActivity"
-            android:exported="false" />
-        <activity
             android:name=".WelcomeActivity.ProfileScreen"
             android:exported="true" />
 
@@ -43,5 +40,9 @@
             </intent-filter>
         </activity>
     </application>
+
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+
 </manifest>
 

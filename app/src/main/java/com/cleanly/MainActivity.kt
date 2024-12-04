@@ -23,7 +23,6 @@ import androidx.compose.ui.Modifier
 import com.cleanly.WelcomeActivity.WelcomeBarra
 import com.cleanly.ZonaActivity.ZonasActivity
 
-
 class MainActivity : ComponentActivity() {
 
     private lateinit var googleSignInClient: GoogleSignInClient
@@ -92,3 +91,4 @@ class MainActivity : ComponentActivity() {
         finish()
     }
 }
+

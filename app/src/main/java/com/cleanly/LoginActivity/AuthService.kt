@@ -2,15 +2,14 @@ package com.cleanly
 
 import android.content.Context
 import android.content.Intent
-import android.util.Log
 import android.widget.Toast
-
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.userProfileChangeRequest
 
 lateinit var auth: FirebaseAuth
 
-fun createAccount(email: String, password: String, nick: String, context: Context) {
+// Este método ahora está fuera del flujo composable y se ejecuta en un servicio o clase fuera de UI.
+fun createAccount(email: String, password: String, nick: String, context: Context, onSuccess: () -> Unit) {
     if (!InputValidator.isEmailValid(email)) {
         Toast.makeText(context, "Email no válido. Formato example@domain.com", Toast.LENGTH_SHORT).show()
         return
@@ -36,7 +35,7 @@ fun createAccount(email: String, password: String, nick: String, context: Contex
                 user?.updateProfile(profileUpdates)
                     ?.addOnCompleteListener { profileTask ->
                         if (profileTask.isSuccessful) {
-                            Toast.makeText(context, "Registro exitoso", Toast.LENGTH_LONG).show()
+                            onSuccess()
                         }
                     }
             } else {
@@ -46,7 +45,8 @@ fun createAccount(email: String, password: String, nick: String, context: Contex
         }
 }
 
-fun signIn(email: String, password: String, context: Context) {
+// Para el login
+fun signIn(email: String, password: String, context: Context, onSuccess: () -> Unit) {
     if (!InputValidator.isEmailValid(email) || !InputValidator.isPasswordValid(password)) {
         Toast.makeText(context, "Credenciales no válidas", Toast.LENGTH_SHORT).show()
         return
@@ -55,12 +55,12 @@ fun signIn(email: String, password: String, context: Context) {
     auth.signInWithEmailAndPassword(email, password)
         .addOnCompleteListener { task ->
             if (task.isSuccessful) {
-                Toast.makeText(context, "Login exitoso", Toast.LENGTH_LONG).show()
-                val intent = Intent(context, TareaActivity::class.java)
-                context.startActivity(intent)
+                onSuccess()
             } else {
                 val errorMessage = task.exception?.localizedMessage ?: "Error desconocido"
                 Toast.makeText(context, "Error en el login: $errorMessage", Toast.LENGTH_LONG).show()
             }
         }
 }
+
+

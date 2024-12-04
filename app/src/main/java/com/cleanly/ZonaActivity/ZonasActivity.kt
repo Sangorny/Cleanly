@@ -5,7 +5,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import com.cleanly.MainScreen
-import com.cleanly.TareaActivity
+import com.cleanly.Welcome
 import com.cleanly.ui.theme.CleanlyTheme
 
 class ZonasActivity : ComponentActivity() {
@@ -16,14 +16,8 @@ class ZonasActivity : ComponentActivity() {
         setContent {
             CleanlyTheme {
                 // Llama al composable Welcome y define la lógica de navegación
-                ZonasActivity(
-                    onZoneClick = {
-                        // Navegar a TareaActivity
-                        val intent = Intent(this, TareaActivity::class.java)
-                        startActivity(intent)
-                    }
-                )
+                Welcome()
+            }
             }
         }
     }
-}

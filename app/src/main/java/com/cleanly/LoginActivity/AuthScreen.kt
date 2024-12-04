@@ -1,5 +1,7 @@
 package com.cleanly
 
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -8,9 +10,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
-import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.userProfileChangeRequest
 
 @Composable
 fun RegisterScreen(navController: NavHostController) {
@@ -76,4 +78,45 @@ fun RegisterScreen(navController: NavHostController) {
             Text("Registrarse")
         }
     }
+}
+
+fun createAccount(email: String, password: String, nick: String, context: Context) {
+    val auth = FirebaseAuth.getInstance()
+
+    if (!InputValidator.isEmailValid(email)) {
+        Toast.makeText(context, "Email no válido. Formato example@domain.com", Toast.LENGTH_SHORT).show()
+        return
+    }
+    if (!InputValidator.isPasswordValid(password)) {
+        Toast.makeText(context, "Contraseña no válida. Debe contener al menos 8 caracteres y solo letras o números.", Toast.LENGTH_SHORT).show()
+        return
+    }
+    if (!InputValidator.isNicknameValid(nick)) {
+        Toast.makeText(context, "Nick no válido. Debe ser alfanumérico y tener hasta 12 caracteres.", Toast.LENGTH_SHORT).show()
+        return
+    }
+
+    auth.createUserWithEmailAndPassword(email, password)
+        .addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val user = auth.currentUser
+
+                val profileUpdates = userProfileChangeRequest {
+                    displayName = nick
+                }
+
+                user?.updateProfile(profileUpdates)
+                    ?.addOnCompleteListener { profileTask ->
+                        if (profileTask.isSuccessful) {
+                            Toast.makeText(context, "Registro exitoso", Toast.LENGTH_LONG).show()
+                            // Puedes redirigir a otra pantalla o realizar una acción después de éxito
+                            // Ejemplo:
+                            // navController.navigate("welcome")
+                        }
+                    }
+            } else {
+                val errorMessage = task.exception?.localizedMessage ?: "Error desconocido"
+                Toast.makeText(context, "Error en el registro: $errorMessage", Toast.LENGTH_LONG).show()
+            }
+        }
 }

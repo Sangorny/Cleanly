@@ -22,10 +22,11 @@ fun AppNavigation() {
             LoginScreen(
                 navController = navController,
                 onLoginSuccess = {
-                    val context = navController.context
-                    val intent = Intent(context, TareaActivity::class.java)
-                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                    context.startActivity(intent)
+                    // Cambiamos la navegación a Welcome en lugar de TareaActivity
+                    navController.navigate("welcome") {
+                        // Limpiamos la pila de navegación y no queremos volver atrás
+                        popUpTo("login") { inclusive = true }
+                    }
                 }
             )
         }
@@ -33,6 +34,11 @@ fun AppNavigation() {
         // Pantalla de registro
         composable("register") {
             RegisterScreen(navController = navController)
+        }
+
+        // Pantalla de Welcome (pantalla principal después del login)
+        composable("welcome") {
+            Welcome()
         }
     }
 }

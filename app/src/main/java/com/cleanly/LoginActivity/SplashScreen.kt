@@ -25,10 +25,10 @@ fun SplashScreen(navController: NavHostController) {
         delay(3000) // Tiempo de espera opcional en el SplashScreen
 
         if (auth.currentUser != null) {
-            // Usuario autenticado, iniciar TareaActivity
-            val intent = Intent(navController.context, TareaActivity::class.java)
-            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            navController.context.startActivity(intent)
+            // Usuario autenticado, redirigir a Welcome
+            navController.navigate("welcome") {
+                popUpTo("splash") { inclusive = true }
+            }
         } else {
             // Usuario no autenticado, ir a LoginScreen
             navController.navigate("login") {
@@ -61,5 +61,6 @@ fun SplashScreen(navController: NavHostController) {
         CircularProgressIndicator()
     }
 }
+
 
 

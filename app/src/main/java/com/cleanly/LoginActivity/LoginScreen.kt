@@ -1,5 +1,6 @@
 package com.cleanly
 
+import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -15,9 +16,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
@@ -29,13 +32,21 @@ fun LoginScreen(
     navController: NavHostController,
     onLoginSuccess: () -> Unit
 ) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    val email = remember { mutableStateOf("") }
+    val password = remember { mutableStateOf("") }
 
     val auth = FirebaseAuth.getInstance()
-    val context = navController.context
+    val context = LocalContext.current
 
-    // Configure Google Sign-In options with default_web_client_id
+    // Verificar si el usuario ya está logueado
+    LaunchedEffect(Unit) {
+        if (auth.currentUser != null) {
+            // Si ya está logueado, redirige a la pantalla Welcome
+            onLoginSuccess()
+        }
+    }
+
+    // Configurar las opciones de inicio de sesión con Google
     val googleSignInOptions = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
         .requestIdToken(context.getString(R.string.default_web_client_id))
         .requestEmail()
@@ -46,25 +57,32 @@ fun LoginScreen(
     val googleSignInLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-        if (task.isSuccessful) {
-            val account = task.result
-            account?.idToken?.let { idToken ->
-                val credential = GoogleAuthProvider.getCredential(idToken, null)
-                auth.signInWithCredential(credential)
-                    .addOnCompleteListener { signInTask ->
-                        if (signInTask.isSuccessful) {
-                            onLoginSuccess()
-                        } else {
-                            Toast.makeText(context, "Error al iniciar sesión con Google", Toast.LENGTH_SHORT).show()
+        try {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            if (task.isSuccessful) {
+                val account = task.result
+                account?.idToken?.let { idToken ->
+                    val credential = GoogleAuthProvider.getCredential(idToken, null)
+                    auth.signInWithCredential(credential)
+                        .addOnCompleteListener { signInTask ->
+                            if (signInTask.isSuccessful) {
+                                // Redirigir a la pantalla Welcome si el login es exitoso
+                                onLoginSuccess()
+                            } else {
+                                Toast.makeText(context, "Error al iniciar sesión con Google", Toast.LENGTH_SHORT).show()
+                            }
                         }
-                    }
+                }
+            } else {
+                Toast.makeText(context, "Error al obtener cuenta de Google", Toast.LENGTH_SHORT).show()
             }
-        } else {
-            Toast.makeText(context, "Error al obtener cuenta de Google", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(context, "Error inesperado: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
+    // UI de la pantalla de Login
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -92,8 +110,8 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(32.dp))
 
         OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
+            value = email.value,
+            onValueChange = { email.value = it },
             label = { Text("Email") },
             modifier = Modifier.fillMaxWidth()
         )
@@ -101,8 +119,8 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
+            value = password.value,
+            onValueChange = { password.value = it },
             label = { Text("Contraseña") },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth()
@@ -112,14 +130,15 @@ fun LoginScreen(
 
         Button(
             onClick = {
-                if (!InputValidator.isEmailValid(email)) {
+                if (!InputValidator.isEmailValid(email.value)) {
                     Toast.makeText(context, "El formato del email es incorrecto", Toast.LENGTH_SHORT).show()
-                } else if (!InputValidator.isPasswordValid(password)) {
+                } else if (!InputValidator.isPasswordValid(password.value)) {
                     Toast.makeText(context, "Contraseña incorrecta", Toast.LENGTH_SHORT).show()
                 } else {
-                    auth.signInWithEmailAndPassword(email, password)
+                    auth.signInWithEmailAndPassword(email.value, password.value)
                         .addOnCompleteListener { task ->
                             if (task.isSuccessful) {
+                                // Redirige a Welcome cuando el login sea exitoso
                                 onLoginSuccess()
                             } else {
                                 val errorMessage = task.exception?.localizedMessage ?: "Error en el inicio de sesión"

@@ -28,6 +28,10 @@ import coil.compose.rememberImagePainter
 import com.cleanly.R
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageReference
+import java.util.UUID
 
 class ProfileScreen : ComponentActivity() {
 
@@ -49,15 +53,14 @@ class ProfileScreen : ComponentActivity() {
         var pointsAccumulated by remember { mutableStateOf(0) }
         var notificationsEnabled by remember { mutableStateOf(true) }
 
-        // Simulación de estadísticas: Reemplaza con datos reales si están disponibles
-        tasksCompleted = 50  // Ejemplo de tareas completadas
-        pointsAccumulated = 120  // Ejemplo de puntos acumulados
+        tasksCompleted = 50  // Simulación de estadísticas
+        pointsAccumulated = 120  // Simulación de estadísticas
 
         val launcher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.GetContent(),
             onResult = { uri ->
                 if (uri != null) {
-                    updateProfilePicture(uri, context) { updatedUri ->
+                    uploadImageToFirebase(uri, context) { updatedUri ->
                         photoUrl = updatedUri
                     }
                 }
@@ -94,6 +97,7 @@ class ProfileScreen : ComponentActivity() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Nombre
             Text(text = "Nombre", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.White)
             BasicTextField(
                 value = displayName,
@@ -108,6 +112,7 @@ class ProfileScreen : ComponentActivity() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Correo electrónico
             Text(text = "Correo electrónico", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.White)
             BasicTextField(
                 value = email,
@@ -131,6 +136,7 @@ class ProfileScreen : ComponentActivity() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Guardar cambios
             Button(onClick = {
                 if (displayName.isNotBlank()) {
                     updateUserProfile(displayName, photoUrl, context)
@@ -143,74 +149,58 @@ class ProfileScreen : ComponentActivity() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Cambiar contraseña
             Button(onClick = { resetPassword(email, context) }) {
                 Text("Cambiar contraseña")
             }
+        }
+    }
 
-            Spacer(modifier = Modifier.height(24.dp))
+    // Función para subir la imagen a Firebase Storage
+    fun uploadImageToFirebase(uri: Uri, context: Context, onComplete: (Uri) -> Unit) {
+        val storage = FirebaseStorage.getInstance()
+        val storageRef = storage.reference
 
-            // Sección de estadísticas del usuario
-            Text(text = "Estadísticas", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.White)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(text = "Tareas completadas: $tasksCompleted", color = Color.White)
-            Text(text = "Puntos acumulados: $pointsAccumulated", color = Color.White)
+        // Crear un nombre único para el archivo
+        val fileName = UUID.randomUUID().toString()
+        val imageRef = storageRef.child("profile_pictures/$fileName.jpg")
 
-            Spacer(modifier = Modifier.height(24.dp))
+        // Subir el archivo al Storage
+        val uploadTask = imageRef.putFile(uri)
 
-            // Preferencias de notificación
-            Text(text = "Preferencias", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.White)
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(text = "Habilitar notificaciones", color = Color.White)
-                Spacer(modifier = Modifier.width(8.dp))
-                Switch(
-                    checked = notificationsEnabled,
-                    onCheckedChange = { notificationsEnabled = it }
-                )
+        // Monitorear el progreso de la subida
+        uploadTask.addOnSuccessListener {
+            // Una vez que la imagen se haya subido correctamente
+            imageRef.downloadUrl.addOnSuccessListener { downloadUri ->
+                // Cuando obtenemos la URL, la pasamos a Firestore
+                updatePhotoUrlInFirestore(downloadUri, context)
+                onComplete(downloadUri)  // Regresamos la URL al llamador
+            }.addOnFailureListener { exception ->
+                Toast.makeText(context, "Error al obtener la URL: ${exception.message}", Toast.LENGTH_SHORT).show()
             }
+        }.addOnFailureListener { exception ->
+            Toast.makeText(context, "Error al subir la imagen: ${exception.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
 
-    private fun updateUserProfile(displayName: String, photoUrl: Uri?, context: Context) {
+    // Función para actualizar la URL de la foto en Firestore
+    fun updatePhotoUrlInFirestore(photoUrl: Uri, context: Context) {
         val user = FirebaseAuth.getInstance().currentUser
-        val profileUpdates = UserProfileChangeRequest.Builder()
-            .setDisplayName(displayName)
-            .setPhotoUri(photoUrl)
-            .build()
+        val userRef = FirebaseFirestore.getInstance().collection("Usuarios").document(user?.uid ?: "")
 
-        user?.updateProfile(profileUpdates)?.addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                Toast.makeText(context, "Perfil actualizado", Toast.LENGTH_SHORT).show()
-                user.reload()
-            } else {
-                Toast.makeText(context, "Error al actualizar el perfil", Toast.LENGTH_SHORT).show()
+        userRef.update("photoUrl", photoUrl.toString())
+            .addOnSuccessListener {
+                Toast.makeText(context, "Foto de perfil actualizada correctamente", Toast.LENGTH_SHORT).show()
             }
-        }
+            .addOnFailureListener { exception ->
+                Toast.makeText(context, "Error al actualizar el perfil: ${exception.message}", Toast.LENGTH_SHORT).show()
+            }
     }
 
-    private fun updateProfilePicture(uri: Uri, context: Context, onComplete: (Uri) -> Unit) {
-        val user = FirebaseAuth.getInstance().currentUser
-        val profileUpdates = UserProfileChangeRequest.Builder()
-            .setPhotoUri(uri)
-            .build()
 
-        user?.updateProfile(profileUpdates)?.addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                user.reload().addOnCompleteListener {
-                    onComplete(uri)
-                }
-            } else {
-                Toast.makeText(context, "Error al actualizar la foto de perfil", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    private fun sendEmailVerification(context: Context) {
+    // Función para enviar el correo de verificación
+    fun sendEmailVerification(context: Context) {
         val user = FirebaseAuth.getInstance().currentUser
         user?.sendEmailVerification()?.addOnCompleteListener { task ->
             if (task.isSuccessful) {
@@ -221,7 +211,8 @@ class ProfileScreen : ComponentActivity() {
         }
     }
 
-    private fun resetPassword(email: String, context: Context) {
+    // Función para restablecer la contraseña
+    fun resetPassword(email: String, context: Context) {
         FirebaseAuth.getInstance().sendPasswordResetEmail(email).addOnCompleteListener { task ->
             if (task.isSuccessful) {
                 Toast.makeText(context, "Correo de restablecimiento de contraseña enviado", Toast.LENGTH_SHORT).show()
@@ -230,4 +221,33 @@ class ProfileScreen : ComponentActivity() {
             }
         }
     }
+
+    // Función para actualizar el perfil en Firebase Authentication
+    fun updateUserProfile(displayName: String, photoUrl: Uri?, context: Context) {
+        val user = FirebaseAuth.getInstance().currentUser
+        val profileUpdates = UserProfileChangeRequest.Builder()
+            .setDisplayName(displayName)
+            .setPhotoUri(photoUrl)
+            .build()
+
+        user?.updateProfile(profileUpdates)?.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                // Recargamos el usuario después de la actualización
+                user.reload().addOnCompleteListener {
+                    if (it.isSuccessful) {
+                        Toast.makeText(context, "Perfil actualizado", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, "Error al recargar el perfil", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } else {
+                Toast.makeText(context, "Error al actualizar el perfil", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 }
+
+
+
+
+
