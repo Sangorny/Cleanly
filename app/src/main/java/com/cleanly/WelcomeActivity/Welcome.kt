@@ -3,6 +3,7 @@ package com.cleanly
 
 import com.cleanly.shared.welcomeBD
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,23 +17,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.cleanly.WelcomeActivity.WelcomeBarra
-import com.cleanly.ZonaActivity.ZonasActivity
+
 import com.google.firebase.firestore.FirebaseFirestore
 import com.cleanly.shared.Tarea
 
 @Composable
-fun Welcome() {
-    Text(text = "Mis Tareas", style = MaterialTheme.typography.headlineMedium)
+fun Welcome(onTareaClick: (Tarea) -> Unit) {
     val db = FirebaseFirestore.getInstance()
     val tabTitles = listOf("Asignadas", "Pendientes", "De Otros")
     var selectedTabIndex by remember { mutableStateOf(0) }
     var tareas by remember { mutableStateOf<List<Tarea>>(emptyList()) }
 
-    // Cargar las tareas desde Firebase al inicio
     LaunchedEffect(Unit) {
         welcomeBD.cargarTareasDesdeFirestore(db) { listaTareas ->
-            tareas = listaTareas
+            tareas = listaTareas ?: emptyList() // Manejar posibles `null`
         }
     }
 
@@ -83,38 +81,45 @@ fun Welcome() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Mostrar tareas filtradas según la pestaña seleccionada
             when (selectedTabIndex) {
-                0 -> MostrarTareasFiltradas(tareas.filter { it.usuario == "Antonio" }) // Asignadas
-                1 -> MostrarTareasFiltradas(tareas.filter { it.usuario.isNullOrEmpty() })      // Pendientes
-                2 -> MostrarTareasFiltradas(tareas.filter { it.usuario != "Antonio" && !it.usuario.isNullOrEmpty()}) // De Otros
+                0 -> MostrarTareasFiltradas(
+                    tareas.filter { it.usuario == "Antonio" },
+                    onTareaClick = onTareaClick
+                )
+                1 -> MostrarTareasFiltradas(
+                    tareas.filter { it.usuario.isNullOrEmpty() },
+                    onTareaClick = onTareaClick
+                )
+                2 -> MostrarTareasFiltradas(
+                    tareas.filter { it.usuario != "Antonio" && !it.usuario.isNullOrEmpty() },
+                    onTareaClick = onTareaClick
+                )
             }
         }
     }
 }
 
 @Composable
-fun MostrarTareasFiltradas(tareasFiltradas: List<Tarea>) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        items(tareasFiltradas) { tarea ->
-            TareaItem(tarea)
+fun MostrarTareasFiltradas(tareas: List<Tarea>, onTareaClick: (Tarea) -> Unit) {
+    LazyColumn {
+        items(tareas) { tarea ->
+            TareaItem(
+                tarea = tarea,
+                onClick = onTareaClick // Manejar clics aquí
+            )
         }
     }
 }
 
 @Composable
-fun TareaItem(tarea: Tarea) {
+fun TareaItem(tarea: Tarea, onClick: (Tarea) -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color.Gray.copy(alpha = 0.3f))
             .padding(16.dp)
             .clip(MaterialTheme.shapes.medium)
+            .clickable { onClick(tarea) } // Manejar clic en la tarea
     ) {
         Column {
             Text(
@@ -134,7 +139,10 @@ fun TareaItem(tarea: Tarea) {
 }
 
 @Composable
-fun MainScreen() {
+fun MainScreen(
+    onNavigateToTarea: (Tarea) -> Unit, // Aceptar Tarea, no String
+    onNavigateToZonas: () -> Unit
+) {
     var currentScreen by remember { mutableStateOf("Mis Tareas") }
 
     Scaffold(
@@ -151,13 +159,17 @@ fun MainScreen() {
             color = MaterialTheme.colorScheme.background
         ) {
             when (currentScreen) {
-                "Mis Tareas" -> Welcome()       // Llama al composable de las tareas
-                "Zonas" -> ZonasActivity()    // Llama al composable de Zonas
-
+                "Mis Tareas" -> Welcome(
+                    onTareaClick = onNavigateToTarea // Pasa el callback esperado
+                )
+                "Zonas" -> Zonas { zoneName ->
+                    onNavigateToZonas()
+                }
             }
         }
     }
 }
+
 
 
 

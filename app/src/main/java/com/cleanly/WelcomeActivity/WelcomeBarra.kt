@@ -1,21 +1,15 @@
-package com.cleanly.WelcomeActivity
+package com.cleanly
 
-import androidx.compose.foundation.layout.*
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.ShowChart
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
-
 
 @Composable
 fun WelcomeBarra(onNavigate: (String) -> Unit) {
@@ -32,7 +26,7 @@ fun WelcomeBarra(onNavigate: (String) -> Unit) {
                 selected = selectedItem.value == index,
                 onClick = {
                     selectedItem.value = index
-                    onNavigate(item)
+                    onNavigate(item) // Navegar según el nombre de la sección
                 },
                 icon = {
                     Icon(

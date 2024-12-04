@@ -23,6 +23,9 @@
             android:name=".TareaActivity"
             android:exported="false" />
         <activity
+            android:name=".ZonasActivity"
+            android:exported="false" />
+        <activity
             android:name=".ProfileScreen"
             android:exported="true" />
         <activity

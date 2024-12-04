@@ -1,4 +1,4 @@
-package com.cleanly.ZonaActivity
+package com.cleanly
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -22,11 +22,10 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.cleanly.R
+
 
 @Composable
-fun ZonasActivity(onZoneClick: () -> Unit) { // Recibe una función callback
-    Text(text = "Zonas", style = MaterialTheme.typography.headlineMedium)
+fun Zonas(onZoneClick: (String) -> Unit) {
     val zones = remember {
         mutableStateListOf(
             "Baño" to R.drawable.bano,
@@ -74,9 +73,9 @@ fun ZonasActivity(onZoneClick: () -> Unit) { // Recibe una función callback
                     .weight(1f)
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
-                onZoneClick = {
-                    // Llama al callback cuando se haga clic en una zona
-                    onZoneClick()
+                onZoneClick = { zoneName ->
+                    // Llama al callback con el nombre de la zona
+                    onZoneClick(zoneName)
                 },
                 onAddZoneClick = { showDialog.value = true }
             )
@@ -90,8 +89,6 @@ fun ZonasActivity(onZoneClick: () -> Unit) { // Recibe una función callback
                 title = { Text(text = "Nueva Zona", fontWeight = FontWeight.Bold) },
                 text = {
                     Column {
-                        Text(text = "Introduce el nombre de la nueva zona:")
-                        Spacer(modifier = Modifier.height(8.dp))
                         TextField(
                             value = newZoneName.value,
                             onValueChange = { newZoneName.value = it },
@@ -100,36 +97,28 @@ fun ZonasActivity(onZoneClick: () -> Unit) { // Recibe una función callback
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        Text(text = "Selecciona una imagen:")
-                        Spacer(modifier = Modifier.height(8.dp))
-
                         LazyVerticalGrid(
                             columns = GridCells.Fixed(3),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.height(150.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             val defaultImages = listOf(
                                 R.drawable.default1,
                                 R.drawable.default2,
-                                R.drawable.default3,
-                                R.drawable.default4,
-                                R.drawable.default5
+                                R.drawable.default3
                             )
-
-                            items(defaultImages) { imageRes ->
+                            items(defaultImages) { image ->
                                 Box(
                                     modifier = Modifier
                                         .size(50.dp)
                                         .clip(RoundedCornerShape(8.dp))
-                                        .background(if (selectedImage.value == imageRes) Color.LightGray else Color.Transparent)
-                                        .clickable { selectedImage.value = imageRes },
+                                        .background(if (selectedImage.value == image) Color.LightGray else Color.Transparent)
+                                        .clickable { selectedImage.value = image },
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Image(
-                                        painter = painterResource(id = imageRes),
-                                        contentDescription = null,
-                                        modifier = Modifier.fillMaxSize()
+                                        painter = painterResource(id = image),
+                                        contentDescription = null
                                     )
                                 }
                             }
@@ -151,13 +140,7 @@ fun ZonasActivity(onZoneClick: () -> Unit) { // Recibe una función callback
                     }
                 },
                 dismissButton = {
-                    Button(
-                        onClick = {
-                            newZoneName.value = ""
-                            selectedImage.value = null
-                            showDialog.value = false
-                        }
-                    ) {
+                    Button(onClick = { showDialog.value = false }) {
                         Text("Cancelar")
                     }
                 }
@@ -170,13 +153,12 @@ fun ZonasActivity(onZoneClick: () -> Unit) { // Recibe una función callback
 fun ZoneGrid(
     zones: List<Pair<String, Int>>,
     modifier: Modifier = Modifier,
-    onZoneClick: () -> Unit,
+    onZoneClick: (String) -> Unit,
     onAddZoneClick: () -> Unit
 ) {
-    val CustomBlue = Color(0xFF02A9FF)
-
-    val BernadetteFontFamily = FontFamily(
-        Font(R.font.bernadette)
+    // Define una familia de fuentes personalizada
+    val customFontFamily = FontFamily(
+        Font(R.font.bernadette) // Cambia a tu fuente personalizada
     )
 
     LazyVerticalGrid(
@@ -191,7 +173,7 @@ fun ZoneGrid(
                     .size(150.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surface)
-                    .clickable { onZoneClick() }, // Redirige al hacer clic
+                    .clickable { onZoneClick(zoneName) },
                 contentAlignment = Alignment.Center
             ) {
                 Image(
@@ -201,49 +183,40 @@ fun ZoneGrid(
                         .fillMaxSize()
                         .clip(RoundedCornerShape(8.dp))
                 )
+
+                // Texto con tipo de fuente, color personalizado y ajustado hacia arriba
                 Text(
                     text = zoneName,
-                    color = CustomBlue,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    style = TextStyle(
-                        fontFamily = BernadetteFontFamily
-                    ),
+                    color = Color.Blue, // Cambia el color del texto
+                    fontSize = 18.sp, // Ajusta el tamaño del texto
+                    fontWeight = FontWeight.Bold, // Define el grosor del texto
+                    fontFamily = customFontFamily, // Usa la fuente personalizada
                     modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 6.dp)
+                        .align(Alignment.TopCenter) // Centra el texto horizontalmente y lo empuja hacia arriba
+                        .padding(top = 6.dp) // Ajusta la posición hacia arriba
                 )
             }
         }
 
-        // Cuadro "Agregar"
+        // Botón para agregar nueva zona
         item {
             Box(
                 modifier = Modifier
                     .size(150.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surface)
-                    .clickable { onAddZoneClick() }, // Muestra el diálogo
-                contentAlignment = Alignment.TopCenter
+                    .clickable { onAddZoneClick() },
+                contentAlignment = Alignment.Center
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.add),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(8.dp))
-                )
                 Text(
                     text = "Agregar",
-                    color = CustomBlue,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    style = TextStyle(
-                        fontFamily = BernadetteFontFamily
-                    ),
+                    color = Color.Blue,
+                    fontSize = 18.sp, // Ajusta el tamaño del texto
+                    fontWeight = FontWeight.Bold, // Define el grosor del texto
+                    fontFamily = customFontFamily, // Usa la fuente personalizada
                     modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 6.dp)
+                        .align(Alignment.TopCenter) // Centra el texto horizontalmente y lo empuja hacia arriba
+                        .padding(top = 6.dp) // Ajusta la posición hacia arriba
                 )
             }
         }
