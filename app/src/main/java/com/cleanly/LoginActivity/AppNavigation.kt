@@ -1,10 +1,12 @@
 package com.cleanly
 
-import android.content.Intent
+import MisTareasScreen
 import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.cleanly.WelcomeActivity.GroupManagementScreen
+import com.cleanly.WelcomeActivity.ProfileScreen
 
 
 @Composable
@@ -41,6 +43,19 @@ fun AppNavigation() {
         composable("welcome") {
             Welcome(navController)
         }
+        // Otras pantallas que quieras agregar pueden tener la barra de navegación también
+        composable("mis_tareas") {
+            MisTareasScreen(navController)  // Asegúrate de tener la barra aquí
+        }
+
+        composable("profile") {
+            ProfileScreen(navController)
+        }
+
+        composable("group_management") {
+            GroupManagementScreen(navController)
+        }
+
     }
 }
 

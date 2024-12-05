@@ -107,10 +107,11 @@ fun Welcome(navController: NavHostController) {
                             text = { Text("Perfil") },
                             onClick = {
                                 expanded = false
-                                val intent = Intent(context, ProfileScreen::class.java)
-                                context.startActivity(intent)
+                                // Usamos NavController para navegar a la pantalla ProfileScreen
+                                navController.navigate("profile") // Este es el cambio principal
                             }
                         )
+
                         DropdownMenuItem(
                             text = { Text("Grupo") },
                             onClick = {

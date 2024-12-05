@@ -10,7 +10,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,10 +19,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberImagePainter
 import com.cleanly.MainActivity
 import com.google.firebase.auth.FirebaseAuth
@@ -34,14 +35,25 @@ class GroupManagementActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            GroupManagementScreen()
+            // Inicializamos el NavController
+            val navController = rememberNavController()
+
+            // Aquí configuramos el NavHost con las pantallas
+            NavHost(navController = navController, startDestination = "group_management") {
+                composable("group_management") {
+                    GroupManagementScreen(navController = navController)
+                }
+                composable("profile") {
+                    ProfileScreen(navController = navController)
+                }
+            }
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GroupManagementScreen() {
+fun GroupManagementScreen(navController: NavHostController) {
     val firestore = FirebaseFirestore.getInstance()
     val groupCollection = firestore.collection("groups")
 
@@ -52,7 +64,7 @@ fun GroupManagementScreen() {
 
     // Estados para manejar el grupo y el estado del usuario
     var groupName by remember { mutableStateOf("") }
-    var currentGroupName by remember { mutableStateOf("") } // Nombre del grupo al que pertenece el usuario
+    var currentGroupName by remember { mutableStateOf("") }
     var isUserInGroup by remember { mutableStateOf(false) }
     var groupMembers by remember { mutableStateOf<List<String>>(emptyList()) }
     var userPoints by remember { mutableStateOf(0) }
@@ -61,12 +73,12 @@ fun GroupManagementScreen() {
     var showCreateGroupDialog by remember { mutableStateOf(false) }
     var showMembersDialog by remember { mutableStateOf(false) }
 
-    val context = LocalContext.current // Obtener el contexto
+    val context = LocalContext.current
 
     // Cargar grupos disponibles
     LaunchedEffect(Unit) {
         groupCollection.get().addOnSuccessListener { snapshot ->
-            availableGroups = snapshot.map { it.id } // Obtener los nombres (o IDs) de los grupos
+            availableGroups = snapshot.map { it.id }
         }
     }
 
@@ -76,12 +88,13 @@ fun GroupManagementScreen() {
             if (document.exists()) {
                 groupMembers = document.get("members") as? List<String> ?: emptyList()
                 userPoints = document.get("user_points") as? Int ?: 0
-                isUserInGroup = groupMembers.contains(userId) // Verificar si el usuario está en el grupo
-                currentGroupName = if (isUserInGroup) "default_group" else "" // Asignar el nombre del grupo al que se unió
+                isUserInGroup = groupMembers.contains(userId)
+                currentGroupName = if (isUserInGroup) "default_group" else ""
             }
         }
     }
 
+    // Scaffold con la barra de navegación
     Scaffold(
         topBar = {
             TopAppBar(
@@ -121,8 +134,11 @@ fun GroupManagementScreen() {
                             text = { Text("Perfil") },
                             onClick = {
                                 expanded = false
-                                val intent = Intent(context, ProfileScreen::class.java)
-                                context.startActivity(intent)
+                                // Usamos el navController para navegar a ProfileScreen
+                                navController.navigate("profile") {
+                                    launchSingleTop = true
+                                    popUpTo("group_management") { inclusive = true }
+                                }
                             }
                         )
                         DropdownMenuItem(
@@ -138,6 +154,15 @@ fun GroupManagementScreen() {
                 },
                 colors = TopAppBarDefaults.smallTopAppBarColors(containerColor = Color(0xFF0D47A1))
             )
+        },
+        bottomBar = {
+            WelcomeBarra { selectedScreen ->
+                when (selectedScreen) {
+                    "Mis Tareas" -> navController.navigate("mis_tareas")
+                    "Zonas" -> navController.navigate("zonas")
+                    "Estadísticas" -> navController.navigate("estadisticas")
+                }
+            }
         },
         content = { paddingValues ->
             Box(
@@ -217,7 +242,7 @@ fun GroupManagementScreen() {
                                 Button(
                                     onClick = {
                                         joinGroup(context, userId, group)
-                                        currentGroupName = group // Asignar el nombre del grupo al que se unió el usuario
+                                        currentGroupName = group
                                         showJoinGroupDialog = false
                                     },
                                     modifier = Modifier.fillMaxWidth().padding(8.dp)

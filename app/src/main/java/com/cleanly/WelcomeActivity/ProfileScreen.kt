@@ -2,10 +2,7 @@ package com.cleanly.WelcomeActivity
 
 import android.content.Context
 import android.net.Uri
-import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -24,35 +21,39 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import coil.compose.rememberImagePainter
 import com.cleanly.R
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
-import com.google.firebase.firestore.FirebaseFirestore
 
-class ProfileScreen : ComponentActivity() {
+// Ahora ProfileScreen es un Composable
+@Composable
+fun ProfileScreen(navController: NavController) {
+    val auth = FirebaseAuth.getInstance()
+    val currentUser = auth.currentUser
+    var displayName by remember { mutableStateOf(currentUser?.displayName ?: "") }
+    var email by remember { mutableStateOf(currentUser?.email ?: "") }
+    var photoUrl by remember { mutableStateOf(currentUser?.photoUrl) }
+    var selectedAvatar by remember { mutableStateOf(photoUrl ?: R.drawable.default_avatar) }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContent {
-            ProfileScreenContent(this)
+    // Lista de avatares predefinidos
+    val avatars = listOf(
+        R.drawable.avatar_1, R.drawable.avatar_2, R.drawable.avatar_3, R.drawable.avatar_4
+    )
+
+    Scaffold(
+        bottomBar = {
+            WelcomeBarra { selectedScreen ->
+                // Aquí maneja la navegación para las distintas pantallas
+                when (selectedScreen) {
+                    "Mis Tareas" -> navController.navigate("mis_tareas")
+                    "Zonas" -> navController.navigate("zonas")
+                    "Estadísticas" -> navController.navigate("estadisticas")
+                }
+            }
         }
-    }
-
-    @Composable
-    fun ProfileScreenContent(context: Context) {
-        val auth = FirebaseAuth.getInstance()
-        val currentUser = auth.currentUser
-        var displayName by remember { mutableStateOf(currentUser?.displayName ?: "") }
-        var email by remember { mutableStateOf(currentUser?.email ?: "") }
-        var photoUrl by remember { mutableStateOf(currentUser?.photoUrl) }
-        var selectedAvatar by remember { mutableStateOf(photoUrl ?: R.drawable.default_avatar) }
-
-        // Lista de avatares predefinidos
-        val avatars = listOf(
-            R.drawable.avatar_1, R.drawable.avatar_2, R.drawable.avatar_3, R.drawable.avatar_4
-        )
-
+    ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -61,7 +62,7 @@ class ProfileScreen : ComponentActivity() {
                         colors = listOf(Color(0xFF0D47A1), Color(0xFF00E676))
                     )
                 )
-                .padding(16.dp),
+                .padding(paddingValues),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Imagen de perfil
@@ -125,9 +126,9 @@ class ProfileScreen : ComponentActivity() {
             // Guardar cambios
             Button(onClick = {
                 if (displayName.isNotBlank()) {
-                    updateUserProfile(displayName, selectedAvatar as Int, context)
+                    updateUserProfile(displayName, selectedAvatar as Int, navController.context)
                 } else {
-                    Toast.makeText(context, "El nombre no puede estar vacío", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(navController.context, "El nombre no puede estar vacío", Toast.LENGTH_SHORT).show()
                 }
             }) {
                 Text("Guardar cambios")
@@ -136,57 +137,57 @@ class ProfileScreen : ComponentActivity() {
             Spacer(modifier = Modifier.height(16.dp))
 
             // Cambiar contraseña
-            Button(onClick = { resetPassword(email, context) }) {
+            Button(onClick = { resetPassword(email, navController.context) }) {
                 Text("Cambiar contraseña")
             }
         }
     }
+}
 
-    @Composable
-    fun AvatarOption(avatar: Int, onClick: () -> Unit) {
-        Image(
-            painter = painterResource(id = avatar),
-            contentDescription = "Avatar",
-            modifier = Modifier
-                .size(50.dp)
-                .clip(CircleShape)
-                .background(Color.Gray)
-                .clickable { onClick() }
-        )
-    }
+@Composable
+fun AvatarOption(avatar: Int, onClick: () -> Unit) {
+    Image(
+        painter = painterResource(id = avatar),
+        contentDescription = "Avatar",
+        modifier = Modifier
+            .size(50.dp)
+            .clip(CircleShape)
+            .background(Color.Gray)
+            .clickable { onClick() }
+    )
+}
 
-    // Función para actualizar el perfil en Firebase Authentication
-    fun updateUserProfile(displayName: String, photoUrl: Int, context: Context) {
-        val user = FirebaseAuth.getInstance().currentUser
-        val profileUpdates = UserProfileChangeRequest.Builder()
-            .setDisplayName(displayName)
-            .setPhotoUri(Uri.parse("android.resource://com.cleanly/drawable/$photoUrl"))
-            .build()
+// Función para actualizar el perfil en Firebase Authentication
+fun updateUserProfile(displayName: String, photoUrl: Int, context: Context) {
+    val user = FirebaseAuth.getInstance().currentUser
+    val profileUpdates = UserProfileChangeRequest.Builder()
+        .setDisplayName(displayName)
+        .setPhotoUri(Uri.parse("android.resource://com.cleanly/drawable/$photoUrl"))
+        .build()
 
-        user?.updateProfile(profileUpdates)?.addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                // Recargamos el usuario después de la actualización
-                user.reload().addOnCompleteListener {
-                    if (it.isSuccessful) {
-                        Toast.makeText(context, "Perfil actualizado", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(context, "Error al recargar el perfil", Toast.LENGTH_SHORT).show()
-                    }
+    user?.updateProfile(profileUpdates)?.addOnCompleteListener { task ->
+        if (task.isSuccessful) {
+            // Recargamos el usuario después de la actualización
+            user.reload().addOnCompleteListener {
+                if (it.isSuccessful) {
+                    Toast.makeText(context, "Perfil actualizado", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "Error al recargar el perfil", Toast.LENGTH_SHORT).show()
                 }
-            } else {
-                Toast.makeText(context, "Error al actualizar el perfil", Toast.LENGTH_SHORT).show()
             }
+        } else {
+            Toast.makeText(context, "Error al actualizar el perfil", Toast.LENGTH_SHORT).show()
         }
     }
+}
 
-    // Función para restablecer la contraseña
-    fun resetPassword(email: String, context: Context) {
-        FirebaseAuth.getInstance().sendPasswordResetEmail(email).addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                Toast.makeText(context, "Correo de restablecimiento de contraseña enviado", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(context, "Error al enviar correo de restablecimiento", Toast.LENGTH_SHORT).show()
-            }
+// Función para restablecer la contraseña
+fun resetPassword(email: String, context: Context) {
+    FirebaseAuth.getInstance().sendPasswordResetEmail(email).addOnCompleteListener { task ->
+        if (task.isSuccessful) {
+            Toast.makeText(context, "Correo de restablecimiento de contraseña enviado", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(context, "Error al enviar correo de restablecimiento", Toast.LENGTH_SHORT).show()
         }
     }
 }
