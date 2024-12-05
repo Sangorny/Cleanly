@@ -1,12 +1,18 @@
 package com.cleanly
 
-
-import com.cleanly.shared.welcomeBD
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -14,98 +20,203 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
+import androidx.navigation.NavHostController
+import androidx.compose.material.TopAppBar
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import coil.compose.rememberImagePainter
+import com.cleanly.WelcomeActivity.GroupManagementActivity
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.cleanly.shared.Tarea
+import com.cleanly.ZonaActivity.ZonasActivity
+import com.cleanly.WelcomeActivity.ProfileScreen
+import com.cleanly.WelcomeActivity.WelcomeBarra
+import com.cleanly.shared.welcomeBD
+
 
 @Composable
-fun Welcome(onTareaClick: (Tarea) -> Unit) {
-    val db = FirebaseFirestore.getInstance()
+fun Welcome(
+    navController: NavHostController,
+    onTareaClick: (Tarea) -> Unit // Callback para manejar clics en tareas
+) {
+    val auth = FirebaseAuth.getInstance()
+    val currentUser = auth.currentUser
+    val context = LocalContext.current
+
+    // Información del usuario
+    val displayName = currentUser?.displayName ?: "Usuario"
+    var photoUrl by remember { mutableStateOf(currentUser?.photoUrl) }
+
+    // Lista de pestañas
     val tabTitles = listOf("Asignadas", "Pendientes", "De Otros")
     var selectedTabIndex by remember { mutableStateOf(0) }
-    var tareas by remember { mutableStateOf<List<Tarea>>(emptyList()) }
 
+    // Tareas desde Firebase
+    var tareas by remember { mutableStateOf<List<Tarea>>(emptyList()) }
     LaunchedEffect(Unit) {
-        welcomeBD.cargarTareasDesdeFirestore(db) { listaTareas ->
-            tareas = listaTareas ?: emptyList() // Manejar posibles `null`
+        welcomeBD.cargarTareasDesdeFirestore(FirebaseFirestore.getInstance()) { listaTareas ->
+            tareas = listaTareas ?: emptyList()
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(Color(0xFF0D47A1), Color(0xFF00E676))
-                )
-            ),
-        contentAlignment = Alignment.TopCenter
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-            Text(
-                text = "Tareas",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
+    Scaffold(
+        topBar = {
+            WelcomeTopBar(
+                photoUrl = photoUrl,
+                displayName = displayName,
+                onProfileClick = { navController.navigate("profile") },
+                onGroupManagementClick = {
+                    val intent = Intent(context, GroupManagementActivity::class.java)
+                    context.startActivity(intent)
+                },
+                onLogoutClick = {
+                    auth.signOut()
+                    val intent = Intent(context, MainActivity::class.java)
+                    context.startActivity(intent)
+                }
             )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            TabRow(
-                selectedTabIndex = selectedTabIndex,
-                containerColor = Color(0xFF0D47A1),
-                contentColor = Color.White
+        },
+        content = { paddingValues ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
             ) {
-                tabTitles.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTabIndex == index,
-                        onClick = { selectedTabIndex = index },
-                        text = {
-                            Text(
-                                text = title,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (selectedTabIndex == index) Color.White else Color.Gray
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(Color(0xFF0D47A1), Color(0xFF00E676))
+                            )
+                        )
+                ) {
+                    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                        Text(
+                            text = "Tareas",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        TabRow(
+                            selectedTabIndex = selectedTabIndex,
+                            containerColor = Color(0xFF0D47A1),
+                            contentColor = Color.White
+                        ) {
+                            tabTitles.forEachIndexed { index, title ->
+                                Tab(
+                                    selected = selectedTabIndex == index,
+                                    onClick = { selectedTabIndex = index },
+                                    text = {
+                                        Text(
+                                            text = title,
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (selectedTabIndex == index) Color.White else Color.Gray
+                                        )
+                                    }
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Mostrar tareas filtradas según la pestaña seleccionada
+                        when (selectedTabIndex) {
+                            0 -> MostrarTareasFiltradas(
+                                tareas.filter { it.usuario == "Antonio" },
+                                onTareaClick = onTareaClick // Pasa el callback aquí
+                            )
+                            1 -> MostrarTareasFiltradas(
+                                tareas.filter { it.usuario.isNullOrEmpty() },
+                                onTareaClick = onTareaClick // Pasa el callback aquí
+                            )
+                            2 -> MostrarTareasFiltradas(
+                                tareas.filter { it.usuario != "Antonio" && !it.usuario.isNullOrEmpty() },
+                                onTareaClick = onTareaClick // Pasa el callback aquí
                             )
                         }
-                    )
+                    }
                 }
             }
+        }
+    )
+}
 
-            Spacer(modifier = Modifier.height(16.dp))
 
-            when (selectedTabIndex) {
-                0 -> MostrarTareasFiltradas(
-                    tareas.filter { it.usuario == "Antonio" },
-                    onTareaClick = onTareaClick
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun WelcomeTopBar(
+    photoUrl: Uri?,
+    displayName: String,
+    onProfileClick: () -> Unit,
+    onGroupManagementClick: () -> Unit,
+    onLogoutClick: () -> Unit
+) {
+    TopAppBar(
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Image(
+                    painter = rememberImagePainter(data = photoUrl ?: R.drawable.default_avatar),
+                    contentDescription = "Foto de perfil",
+                    modifier = Modifier
+                        .size(50.dp)
+                        .clip(CircleShape)
+                        .background(Color.Gray),
+                    contentScale = ContentScale.Crop
                 )
-                1 -> MostrarTareasFiltradas(
-                    tareas.filter { it.usuario.isNullOrEmpty() },
-                    onTareaClick = onTareaClick
-                )
-                2 -> MostrarTareasFiltradas(
-                    tareas.filter { it.usuario != "Antonio" && !it.usuario.isNullOrEmpty() },
-                    onTareaClick = onTareaClick
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = displayName,
+                    fontSize = 20.sp,
+                    color = Color.White
                 )
             }
-        }
-    }
+        },
+        actions = {
+            var expanded by remember { mutableStateOf(false) }
+            IconButton(onClick = { expanded = !expanded }) {
+                Icon(Icons.Default.MoreVert, contentDescription = "Menú", tint = Color.White)
+            }
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier.background(Color.Gray)
+            ) {
+                DropdownMenuItem(text = { Text("Perfil") }, onClick = onProfileClick)
+                DropdownMenuItem(text = { Text("Grupo") }, onClick = onGroupManagementClick)
+                DropdownMenuItem(text = { Text("Logout") }, onClick = onLogoutClick)
+            }
+        },
+        colors = TopAppBarDefaults.smallTopAppBarColors(containerColor = Color(0xFF0D47A1))
+    )
 }
 
 @Composable
 fun MostrarTareasFiltradas(tareas: List<Tarea>, onTareaClick: (Tarea) -> Unit) {
-    LazyColumn {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
         items(tareas) { tarea ->
             TareaItem(
                 tarea = tarea,
-                onClick = onTareaClick // Manejar clics aquí
+                onClick = onTareaClick // Llama al callback aquí
             )
         }
     }
@@ -119,7 +230,7 @@ fun TareaItem(tarea: Tarea, onClick: (Tarea) -> Unit) {
             .background(Color.Gray.copy(alpha = 0.3f))
             .padding(16.dp)
             .clip(MaterialTheme.shapes.medium)
-            .clickable { onClick(tarea) } // Manejar clic en la tarea
+            .clickable { onClick(tarea) } // Llama al callback al hacer clic
     ) {
         Column {
             Text(
@@ -138,17 +249,21 @@ fun TareaItem(tarea: Tarea, onClick: (Tarea) -> Unit) {
     }
 }
 
+
 @Composable
 fun MainScreen(
-    onNavigateToTarea: (Tarea) -> Unit, // Aceptar Tarea, no String
-    onNavigateToZonas: () -> Unit
+    onNavigateToTarea: (Tarea) -> Unit, // Callback para manejar clics en tareas
+    onNavigateToZonas: () -> Unit      // Callback para manejar clics en zonas
 ) {
-    var currentScreen by remember { mutableStateOf("Mis Tareas") }
+    val navController = rememberNavController() // Crear el NavController
 
     Scaffold(
         bottomBar = {
             WelcomeBarra { selectedScreen ->
-                currentScreen = selectedScreen
+                when (selectedScreen) {
+                    "Mis Tareas" -> navController.navigate("welcome") // Navegar al Welcome
+                    "Zonas" -> navController.navigate("zonas") // Navegar a Zonas
+                }
             }
         }
     ) { paddingValues ->
@@ -158,12 +273,24 @@ fun MainScreen(
                 .padding(paddingValues),
             color = MaterialTheme.colorScheme.background
         ) {
-            when (currentScreen) {
-                "Mis Tareas" -> Welcome(
-                    onTareaClick = onNavigateToTarea // Pasa el callback esperado
-                )
-                "Zonas" -> Zonas { zoneName ->
-                    onNavigateToZonas()
+            // Configurar el NavHost
+            NavHost(
+                navController = navController,
+                startDestination = "welcome"
+            ) {
+                composable("welcome") {
+                    Welcome(
+                        navController = navController,
+                        onTareaClick = onNavigateToTarea
+                    )
+                }
+                composable("zonas") {
+                    Zonas { zoneName ->
+                        onNavigateToZonas()
+                    }
+                }
+                composable("profile") {
+                    ProfileScreen(navController = navController)
                 }
             }
         }

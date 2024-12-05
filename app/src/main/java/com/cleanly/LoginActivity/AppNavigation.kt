@@ -1,10 +1,12 @@
 package com.cleanly
 
-import android.content.Intent
+import MisTareasScreen
 import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.cleanly.WelcomeActivity.GroupManagementScreen
+import com.cleanly.WelcomeActivity.ProfileScreen
 
 
 @Composable
@@ -12,27 +14,56 @@ fun AppNavigation() {
     val navController = rememberNavController()
 
     NavHost(navController = navController, startDestination = "splash") {
-        // SplashScreen como pantalla inicial
+        // Pantalla Splash
         composable("splash") {
             SplashScreen(navController = navController)
         }
 
-        // Pantalla de login
+        // Pantalla Login
         composable("login") {
             LoginScreen(
                 navController = navController,
                 onLoginSuccess = {
-                    val context = navController.context
-                    val intent = Intent(context, TareaActivity::class.java)
-                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                    context.startActivity(intent)
+                    // Asegúrate de que no se agregue otra instancia de Welcome
+                    navController.navigate("welcome") {
+                        // Limpia la pila de navegación y no queremos volver atrás a Login
+                        popUpTo("login") { inclusive = true }
+                        launchSingleTop = true // Asegúrate de no duplicar la pantalla
+                    }
                 }
             )
         }
 
-        // Pantalla de registro
+        // Pantalla de Registro
         composable("register") {
             RegisterScreen(navController = navController)
         }
+
+        // Pantalla Welcome
+        composable("welcome") {
+            Welcome(
+                navController = navController,
+                onTareaClick = { tarea ->
+                    // Lógica para manejar el clic en una tarea
+                    navController.navigate("mis_tareas") {
+                        popUpTo("welcome") { inclusive = false } // Navegar sin eliminar "welcome" de la pila
+                        launchSingleTop = true // Evitar duplicados
+                    }
+                }
+            )
+        }
+        // Otras pantallas que quieras agregar pueden tener la barra de navegación también
+        composable("mis_tareas") {
+            MisTareasScreen(navController)  // Asegúrate de tener la barra aquí
+        }
+
+        composable("profile") {
+            ProfileScreen(navController)
+        }
+
+        composable("group_management") {
+            GroupManagementScreen(navController)
+        }
+
     }
 }
