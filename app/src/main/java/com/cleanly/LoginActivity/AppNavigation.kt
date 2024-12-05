@@ -12,33 +12,35 @@ fun AppNavigation() {
     val navController = rememberNavController()
 
     NavHost(navController = navController, startDestination = "splash") {
-        // SplashScreen como pantalla inicial
+        // Pantalla Splash
         composable("splash") {
             SplashScreen(navController = navController)
         }
 
-        // Pantalla de login
+        // Pantalla Login
         composable("login") {
             LoginScreen(
                 navController = navController,
                 onLoginSuccess = {
-                    // Cambiamos la navegación a Welcome en lugar de TareaActivity
+                    // Asegúrate de que no se agregue otra instancia de Welcome
                     navController.navigate("welcome") {
-                        // Limpiamos la pila de navegación y no queremos volver atrás
+                        // Limpia la pila de navegación y no queremos volver atrás a Login
                         popUpTo("login") { inclusive = true }
+                        launchSingleTop = true // Asegúrate de no duplicar la pantalla
                     }
                 }
             )
         }
 
-        // Pantalla de registro
+        // Pantalla de Registro
         composable("register") {
             RegisterScreen(navController = navController)
         }
 
-        // Pantalla de Welcome (pantalla principal después del login)
+        // Pantalla Welcome
         composable("welcome") {
-            Welcome()
+            Welcome(navController)
         }
     }
 }
+

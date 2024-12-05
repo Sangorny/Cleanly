@@ -1,6 +1,5 @@
 package com.cleanly
 
-import android.content.Intent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -13,26 +12,28 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
-
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
 
 @Composable
 fun SplashScreen(navController: NavHostController) {
-    // Verificar autenticación del usuario en el inicio
     val auth = FirebaseAuth.getInstance()
+
     LaunchedEffect(Unit) {
         delay(3000) // Tiempo de espera opcional en el SplashScreen
 
+        // Verificar si el usuario ya está autenticado
         if (auth.currentUser != null) {
-            // Usuario autenticado, redirigir a Welcome
+            // Si está logueado, redirigir a Welcome, y limpiar la pila de navegación
             navController.navigate("welcome") {
-                popUpTo("splash") { inclusive = true }
+                popUpTo("splash") { inclusive = true } // Limpiar la pantalla Splash de la pila
+                launchSingleTop = true  // Evitar duplicados si ya está en la pila
             }
         } else {
-            // Usuario no autenticado, ir a LoginScreen
+            // Si no está logueado, redirigir a LoginScreen
             navController.navigate("login") {
-                popUpTo("splash") { inclusive = true }
+                popUpTo("splash") { inclusive = true } // Limpiar la pantalla Splash de la pila
+                launchSingleTop = true  // Evitar duplicados si ya está en la pila
             }
         }
     }
@@ -61,6 +62,7 @@ fun SplashScreen(navController: NavHostController) {
         CircularProgressIndicator()
     }
 }
+
 
 
 

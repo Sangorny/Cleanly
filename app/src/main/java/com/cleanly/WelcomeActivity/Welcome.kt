@@ -1,7 +1,6 @@
 package com.cleanly
 
 import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -15,14 +14,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberImagePainter
 import com.cleanly.WelcomeActivity.GroupManagementActivity
 import com.google.firebase.auth.FirebaseAuth
@@ -35,7 +34,7 @@ import com.cleanly.shared.welcomeBD
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Welcome() {
+fun Welcome(navController: NavHostController) {
     val auth = FirebaseAuth.getInstance()
     val currentUser = auth.currentUser
     val context = LocalContext.current
@@ -134,6 +133,15 @@ fun Welcome() {
                 colors = TopAppBarDefaults.smallTopAppBarColors(containerColor = Color(0xFF0D47A1)),
             )
         },
+        bottomBar = {
+            WelcomeBarra { selectedScreen ->
+                when (selectedScreen) {
+                    "Mis Tareas" -> navController.navigate("mis_tareas")
+                    "Zonas" -> navController.navigate("zonas")
+                    "Estadísticas" -> navController.navigate("estadisticas")
+                }
+            }
+        },
         content = { paddingValues ->
             // Contenido de la pantalla de bienvenida
             Column(
@@ -206,6 +214,8 @@ fun TareaItem(tarea: Tarea) {
 fun MainScreen() {
     var currentScreen by remember { mutableStateOf("Mis Tareas") }
 
+    val navController = rememberNavController() // Crear el NavHostController
+
     Scaffold(
         bottomBar = {
             WelcomeBarra { selectedScreen ->
@@ -220,16 +230,9 @@ fun MainScreen() {
             color = MaterialTheme.colorScheme.background
         ) {
             when (currentScreen) {
-                "Mis Tareas" -> Welcome()       // Llama al composable de las tareas
-                "Zonas" -> ZonasActivity()    // Llama al composable de Zonas
+                "Mis Tareas" -> Welcome(navController) // Pasar el navController
+                "Zonas" -> ZonasActivity() // Llama al composable de Zonas
             }
         }
     }
 }
-
-
-
-
-
-
-

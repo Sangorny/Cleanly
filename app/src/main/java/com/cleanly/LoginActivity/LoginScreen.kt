@@ -1,6 +1,5 @@
 package com.cleanly
 
-import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -29,7 +28,7 @@ import com.google.firebase.auth.GoogleAuthProvider
 
 @Composable
 fun LoginScreen(
-    navController: NavHostController,
+    navController: NavHostController,  // Cambié a NavHostController para usarlo
     onLoginSuccess: () -> Unit
 ) {
     val email = remember { mutableStateOf("") }
@@ -39,10 +38,12 @@ fun LoginScreen(
     val context = LocalContext.current
 
     // Verificar si el usuario ya está logueado
-    LaunchedEffect(Unit) {
+    LaunchedEffect(auth.currentUser) {
         if (auth.currentUser != null) {
             // Si ya está logueado, redirige a la pantalla Welcome
-            onLoginSuccess()
+            navController.navigate("welcome") {
+                popUpTo("login") { inclusive = true }  // Elimina la pantalla de Login
+            }
         }
     }
 
@@ -67,7 +68,9 @@ fun LoginScreen(
                         .addOnCompleteListener { signInTask ->
                             if (signInTask.isSuccessful) {
                                 // Redirigir a la pantalla Welcome si el login es exitoso
-                                onLoginSuccess()
+                                navController.navigate("welcome") {
+                                    popUpTo("login") { inclusive = true }  // Elimina la pantalla de Login
+                                }
                             } else {
                                 Toast.makeText(context, "Error al iniciar sesión con Google", Toast.LENGTH_SHORT).show()
                             }
@@ -139,7 +142,9 @@ fun LoginScreen(
                         .addOnCompleteListener { task ->
                             if (task.isSuccessful) {
                                 // Redirige a Welcome cuando el login sea exitoso
-                                onLoginSuccess()
+                                navController.navigate("welcome") {
+                                    popUpTo("login") { inclusive = true }  // Elimina la pantalla de Login
+                                }
                             } else {
                                 val errorMessage = task.exception?.localizedMessage ?: "Error en el inicio de sesión"
                                 Toast.makeText(context, errorMessage, Toast.LENGTH_SHORT).show()
