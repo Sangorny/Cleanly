@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -28,11 +29,11 @@ import androidx.compose.ui.unit.sp
 fun Zonas(onZoneClick: (String) -> Unit) {
     val zones = remember {
         mutableStateListOf(
-            "Baño" to R.drawable.bano,
+            "Aseo" to R.drawable.bano,
             "Cocina" to R.drawable.cocina,
             "Sala" to R.drawable.salon,
             "Dormitorio" to R.drawable.dormitorio
-        )
+             )
     }
     val showDialog = remember { mutableStateOf(false) }
     val newZoneName = remember { mutableStateOf("") }
@@ -105,7 +106,9 @@ fun Zonas(onZoneClick: (String) -> Unit) {
                             val defaultImages = listOf(
                                 R.drawable.default1,
                                 R.drawable.default2,
-                                R.drawable.default3
+                                R.drawable.default3,
+                                R.drawable.default4,
+                                R.drawable.default5
                             )
                             items(defaultImages) { image ->
                                 Box(
@@ -206,12 +209,21 @@ fun ZoneGrid(
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surface)
                     .clickable { onAddZoneClick() },
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center // Centra todo dentro del Box
             ) {
+                // Imagen que ocupa todo el espacio del Box
+                Image(
+                    painter = painterResource(id = R.drawable.add),
+                    contentDescription = "Agregar zona",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+
+                // Texto encima de la imagen
                 Text(
                     text = "Agregar",
-                    color = Color.Blue,
-                    fontSize = 18.sp, // Ajusta el tamaño del texto
+                    color = Color.Blue, // Asegúrate de usar un color visible sobre la imagen
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.Bold, // Define el grosor del texto
                     fontFamily = customFontFamily, // Usa la fuente personalizada
                     modifier = Modifier
@@ -222,4 +234,3 @@ fun ZoneGrid(
         }
     }
 }
-
