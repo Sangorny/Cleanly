@@ -26,6 +26,7 @@ import coil.compose.rememberImagePainter
 import com.cleanly.R
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
+import com.google.firebase.firestore.FirebaseFirestore
 
 // Ahora ProfileScreen es un Composable
 @Composable
@@ -173,15 +174,27 @@ fun updateUserProfile(
 
     user?.updateProfile(profileUpdates)?.addOnCompleteListener { task ->
         if (task.isSuccessful) {
-            // Recargamos el usuario después de la actualización
-            user.reload().addOnCompleteListener {
-                onComplete(it.isSuccessful)
-            }
+            // Guardamos también el nombre en Firestore
+            val userId = user.uid
+            val firestore = FirebaseFirestore.getInstance()
+            val userRef = firestore.collection("usuarios").document(userId)
+
+            userRef.set(mapOf("nombre" to displayName))
+                .addOnCompleteListener { firestoreTask ->
+                    if (firestoreTask.isSuccessful) {
+                        user.reload().addOnCompleteListener {
+                            onComplete(it.isSuccessful)
+                        }
+                    } else {
+                        onComplete(false)
+                    }
+                }
         } else {
             onComplete(false)
         }
     }
 }
+
 
 // Función para restablecer la contraseña
 fun resetPassword(email: String, context: Context) {
@@ -193,3 +206,4 @@ fun resetPassword(email: String, context: Context) {
         }
     }
 }
+

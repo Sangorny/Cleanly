@@ -1,6 +1,6 @@
 package com.cleanly
 
-import MisTareasScreen
+import com.cleanly.TareasActivity.MisTareasScreen
 import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
