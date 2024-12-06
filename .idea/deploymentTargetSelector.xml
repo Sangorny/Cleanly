@@ -5,10 +5,10 @@
       <SelectionState runConfigName="MainActivity">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="app">
+      <SelectionState runConfigName="WelcomActivity">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="WelcomActivity">
+      <SelectionState runConfigName="Android">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
     </selectionStates>

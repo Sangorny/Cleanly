@@ -52,18 +52,25 @@ fun AppNavigation() {
                 }
             )
         }
+
         // Otras pantallas que quieras agregar pueden tener la barra de navegación también
         composable("mis_tareas") {
             MisTareasScreen(navController)  // Asegúrate de tener la barra aquí
         }
 
+        // Pantalla Profile con el callback onProfileUpdated
         composable("profile") {
-            ProfileScreen(navController)
+            ProfileScreen(
+                navController = navController,
+                onProfileUpdated = { updatedDisplayName, updatedPhotoUrl ->
+                    // Aquí puedes manejar cómo se actualizan los datos en MainScreen o AppNavigation
+                }
+            )
         }
 
+        // Pantalla de gestión de grupos
         composable("group_management") {
             GroupManagementScreen(navController)
         }
-
     }
 }

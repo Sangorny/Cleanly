@@ -32,6 +32,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberImagePainter
 import com.cleanly.WelcomeActivity.GroupManagementActivity
+import com.cleanly.WelcomeActivity.GroupManagementScreen
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.cleanly.shared.Tarea
@@ -67,22 +68,6 @@ fun Welcome(
     }
 
     Scaffold(
-        topBar = {
-            WelcomeTopBar(
-                photoUrl = photoUrl,
-                displayName = displayName,
-                onProfileClick = { navController.navigate("profile") },
-                onGroupManagementClick = {
-                    val intent = Intent(context, GroupManagementActivity::class.java)
-                    context.startActivity(intent)
-                },
-                onLogoutClick = {
-                    auth.signOut()
-                    val intent = Intent(context, MainActivity::class.java)
-                    context.startActivity(intent)
-                }
-            )
-        },
         content = { paddingValues ->
             Column(
                 modifier = Modifier
@@ -252,51 +237,85 @@ fun TareaItem(tarea: Tarea, onClick: (Tarea) -> Unit) {
 
 @Composable
 fun MainScreen(
-    onNavigateToTarea: (Tarea) -> Unit, // Callback para manejar clics en tareas
-    onNavigateToZonas: () -> Unit      // Callback para manejar clics en zonas
+    onNavigateToTarea: (Tarea) -> Unit,
+    onNavigateToZonas: () -> Unit
 ) {
-    val navController = rememberNavController() // Crear el NavController
+    val navController = rememberNavController()
+    val context = LocalContext.current
+    val auth = FirebaseAuth.getInstance()
+    val currentUser = auth.currentUser
+
+    // Estados para manejar el nombre y foto del usuario
+    var displayName by remember { mutableStateOf(currentUser?.displayName ?: "Usuario") }
+    var photoUrl by remember { mutableStateOf(currentUser?.photoUrl) }
+
+    // Actualiza el estado del usuario cuando se realizan cambios
+    LaunchedEffect(currentUser) {
+        currentUser?.reload()?.addOnCompleteListener {
+            if (it.isSuccessful) {
+                displayName = currentUser?.displayName ?: "Usuario"
+                photoUrl = currentUser?.photoUrl
+            }
+        }
+    }
 
     Scaffold(
+        topBar = {
+            WelcomeTopBar(
+                photoUrl = photoUrl,
+                displayName = displayName,
+                onProfileClick = { navController.navigate("profile") },
+                onGroupManagementClick = {
+                    navController.navigate("group_management")
+                },
+                onLogoutClick = {
+                    auth.signOut()
+                    val intent = Intent(context, MainActivity::class.java)
+                    context.startActivity(intent)
+                }
+            )
+        },
         bottomBar = {
             WelcomeBarra { selectedScreen ->
                 when (selectedScreen) {
-                    "Mis Tareas" -> navController.navigate("welcome") // Navegar al Welcome
-                    "Zonas" -> navController.navigate("zonas") // Navegar a Zonas
+                    "Mis Tareas" -> navController.navigate("welcome")
+                    "Zonas" -> navController.navigate("zonas")
+                    "Estadísticas" -> navController.navigate("estadisticas")
                 }
             }
         }
     ) { paddingValues ->
-        Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            color = MaterialTheme.colorScheme.background
+        NavHost(
+            navController = navController,
+            startDestination = "welcome",
+            modifier = Modifier.padding(paddingValues)
         ) {
-            // Configurar el NavHost
-            NavHost(
-                navController = navController,
-                startDestination = "welcome"
-            ) {
-                composable("welcome") {
-                    Welcome(
-                        navController = navController,
-                        onTareaClick = onNavigateToTarea
-                    )
+            composable("welcome") {
+                Welcome(
+                    navController = navController,
+                    onTareaClick = onNavigateToTarea
+                )
+            }
+            composable("zonas") {
+                Zonas { zoneName ->
+                    onNavigateToZonas()
                 }
-                composable("zonas") {
-                    Zonas { zoneName ->
-                        onNavigateToZonas()
+            }
+            composable("group_management") {
+                GroupManagementScreen(navController = navController)
+            }
+            composable("profile") {
+                ProfileScreen(
+                    navController = navController,
+                    onProfileUpdated = { updatedDisplayName, updatedPhotoUrl ->
+                        displayName = updatedDisplayName
+                        photoUrl = updatedPhotoUrl
                     }
-                }
-                composable("profile") {
-                    ProfileScreen(navController = navController)
-                }
+                )
             }
         }
     }
 }
-
 
 
 

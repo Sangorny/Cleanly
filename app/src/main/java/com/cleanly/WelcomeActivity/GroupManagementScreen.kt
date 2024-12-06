@@ -1,6 +1,7 @@
 package com.cleanly.WelcomeActivity
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -44,13 +45,26 @@ class GroupManagementActivity : ComponentActivity() {
                     GroupManagementScreen(navController = navController)
                 }
                 composable("profile") {
-                    ProfileScreen(navController = navController)
+                    ProfileScreen(
+                        navController = navController,
+                        onProfileUpdated = { updatedName, updatedPhoto ->
+                            // Aquí puedes manejar la lógica cuando el perfil se actualiza
+                            handleProfileUpdated(updatedName, updatedPhoto)
+                        }
+                    )
                 }
             }
         }
-    }
-}
 
+
+    }
+    private fun handleProfileUpdated(updatedName: String, updatedPhoto: Uri?) {
+        // Lógica para manejar los cambios en el perfil
+        // Por ejemplo: puedes actualizar un estado compartido o informar al backend
+        println("Perfil actualizado: $updatedName con foto $updatedPhoto")
+    }
+
+}
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GroupManagementScreen(navController: NavHostController) {
@@ -96,74 +110,6 @@ fun GroupManagementScreen(navController: NavHostController) {
 
     // Scaffold con la barra de navegación
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Image(
-                            painter = rememberImagePainter(currentUser?.photoUrl),
-                            contentDescription = "Avatar",
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = currentUser?.displayName ?: "Usuario",
-                            fontSize = 20.sp,
-                            color = Color.White
-                        )
-                    }
-                },
-                actions = {
-                    var expanded by remember { mutableStateOf(false) }
-
-                    IconButton(onClick = { expanded = !expanded }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "Menú", tint = Color.White)
-                    }
-
-                    DropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false },
-                        modifier = Modifier.background(Color.Gray)
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Perfil") },
-                            onClick = {
-                                expanded = false
-                                // Usamos el navController para navegar a ProfileScreen
-                                navController.navigate("profile") {
-                                    launchSingleTop = true
-                                    popUpTo("group_management") { inclusive = true }
-                                }
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Logout") },
-                            onClick = {
-                                expanded = false
-                                auth.signOut()
-                                val intent = Intent(context, MainActivity::class.java)
-                                context.startActivity(intent)
-                            }
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.smallTopAppBarColors(containerColor = Color(0xFF0D47A1))
-            )
-        },
-        bottomBar = {
-            WelcomeBarra { selectedScreen ->
-                when (selectedScreen) {
-                    "Mis Tareas" -> navController.navigate("mis_tareas")
-                    "Zonas" -> navController.navigate("zonas")
-                    "Estadísticas" -> navController.navigate("estadisticas")
-                }
-            }
-        },
         content = { paddingValues ->
             Box(
                 modifier = Modifier

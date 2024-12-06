@@ -29,7 +29,10 @@ import com.google.firebase.auth.UserProfileChangeRequest
 
 // Ahora ProfileScreen es un Composable
 @Composable
-fun ProfileScreen(navController: NavController) {
+fun ProfileScreen(
+    navController: NavController,
+    onProfileUpdated: (String, Uri?) -> Unit // Callback para actualizar el perfil en MainScreen
+) {
     val auth = FirebaseAuth.getInstance()
     val currentUser = auth.currentUser
     var displayName by remember { mutableStateOf(currentUser?.displayName ?: "") }
@@ -116,7 +119,16 @@ fun ProfileScreen(navController: NavController) {
             // Guardar cambios
             Button(onClick = {
                 if (displayName.isNotBlank()) {
-                    updateUserProfile(displayName, selectedAvatar as Int, navController.context)
+                    val avatarUri = Uri.parse("android.resource://com.cleanly/drawable/$selectedAvatar")
+                    updateUserProfile(displayName, avatarUri) { success ->
+                        if (success) {
+                            // Llama al callback para actualizar MainScreen
+                            onProfileUpdated(displayName, avatarUri)
+                            Toast.makeText(navController.context, "Perfil actualizado", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(navController.context, "Error al actualizar el perfil", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 } else {
                     Toast.makeText(navController.context, "El nombre no puede estar vacío", Toast.LENGTH_SHORT).show()
                 }
@@ -148,25 +160,25 @@ fun AvatarOption(avatar: Int, onClick: () -> Unit) {
 }
 
 // Función para actualizar el perfil en Firebase Authentication
-fun updateUserProfile(displayName: String, photoUrl: Int, context: Context) {
+fun updateUserProfile(
+    displayName: String,
+    photoUrl: Uri?,
+    onComplete: (Boolean) -> Unit
+) {
     val user = FirebaseAuth.getInstance().currentUser
     val profileUpdates = UserProfileChangeRequest.Builder()
         .setDisplayName(displayName)
-        .setPhotoUri(Uri.parse("android.resource://com.cleanly/drawable/$photoUrl"))
+        .setPhotoUri(photoUrl)
         .build()
 
     user?.updateProfile(profileUpdates)?.addOnCompleteListener { task ->
         if (task.isSuccessful) {
             // Recargamos el usuario después de la actualización
             user.reload().addOnCompleteListener {
-                if (it.isSuccessful) {
-                    Toast.makeText(context, "Perfil actualizado", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(context, "Error al recargar el perfil", Toast.LENGTH_SHORT).show()
-                }
+                onComplete(it.isSuccessful)
             }
         } else {
-            Toast.makeText(context, "Error al actualizar el perfil", Toast.LENGTH_SHORT).show()
+            onComplete(false)
         }
     }
 }
