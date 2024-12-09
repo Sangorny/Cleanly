@@ -2,6 +2,7 @@ package com.cleanly.WelcomeActivity
 
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -61,19 +62,16 @@ class GroupManagementActivity : ComponentActivity() {
 fun GroupManagementScreen(navController: NavHostController) {
     val firestore = FirebaseFirestore.getInstance()
     val groupCollection = firestore.collection("grupos")
-    val usersCollection = firestore.collection("Usuarios")  // Colección de usuarios
 
-    // Obtener el usuario actual
     val auth = FirebaseAuth.getInstance()
     val currentUser = auth.currentUser
     val userId = currentUser?.uid ?: ""
 
-    // Estados para manejar el grupo y el estado del usuario
     var groupName by remember { mutableStateOf("") }
     var currentGroupName by remember { mutableStateOf("") }
     var isUserInGroup by remember { mutableStateOf(false) }
     var groupMembers by remember { mutableStateOf<List<String>>(emptyList()) }
-    var groupMemberNames by remember { mutableStateOf<List<String>>(emptyList()) }  // Aquí se almacenarán los nombres de los miembros
+    var groupMemberNames by remember { mutableStateOf<List<String>>(emptyList()) }
     var userPoints by remember { mutableStateOf(0) }
     var availableGroups by remember { mutableStateOf<List<String>>(emptyList()) }
     var showJoinGroupDialog by remember { mutableStateOf(false) }
@@ -89,7 +87,7 @@ fun GroupManagementScreen(navController: NavHostController) {
         }
     }
 
-    // Verificar si el usuario está dentro de un grupo
+// Verificar si el usuario está dentro de un grupo y obtener los miembros
     LaunchedEffect(userId) {
         groupCollection.get().addOnSuccessListener { snapshot ->
             snapshot.documents.forEach { document ->
@@ -99,30 +97,37 @@ fun GroupManagementScreen(navController: NavHostController) {
                     isUserInGroup = true
                     userPoints = document.get("puntos_de_usuario") as? Int ?: 0
                     groupMembers = members
+
+                    // Recuperar los nombres de los miembros desde Firestore
+                    val memberNames = mutableListOf<String>()
+                    val usersCollection = FirebaseFirestore.getInstance().collection("usuarios")
+
+                    members.forEach { memberId ->
+                        usersCollection.document(memberId).get().addOnSuccessListener { userDoc ->
+                            val name = userDoc.getString("nombre") ?: "Desconocido"
+
+                            // Log de depuración
+                            Log.d("Firestore", "Miembro: $memberId - Nombre: $name")
+
+                            memberNames.add(name)
+
+                            // Cuando todos los miembros hayan sido procesados, actualizamos el estado
+                            if (memberNames.size == members.size) {
+                                groupMemberNames = memberNames
+                            }
+                        }.addOnFailureListener { exception ->
+                            // Log de error en caso de fallo
+                            Log.e("Firestore", "Error al obtener el nombre del miembro: $memberId", exception)
+                        }
+                    }
                 }
             }
+        }.addOnFailureListener { exception ->
+            // Log de error en caso de fallo al obtener el grupo
+            Log.e("Firestore", "Error al obtener los datos del grupo", exception)
         }
     }
 
-    // Esta función ahora recogerá los nombres de los miembros desde la base de datos
-    fun loadMemberNames(members: List<String>, onComplete: (List<String>) -> Unit) {
-        val names = mutableListOf<String>()
-        var count = 0
-        members.forEach { userId ->
-            usersCollection.document(userId).get().addOnSuccessListener { document ->
-                val name = document.getString("nombre") ?: "Desconocido" // Obtener el campo 'nombre'
-                names.add(name)
-                count++
-                // Cuando todos los miembros hayan sido procesados
-                if (count == members.size) {
-                    onComplete(names) // Devolvemos la lista completa de nombres
-                }
-            }
-        }
-    }
-
-
-    // Scaffold con la barra de navegación
     Scaffold(
         content = { paddingValues ->
             Box(
@@ -155,19 +160,12 @@ fun GroupManagementScreen(navController: NavHostController) {
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // Botones siempre visibles
                     Column(
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Button(
-                            onClick = {
-                                // Cargar los nombres de los miembros al abrir el diálogo
-                                loadMemberNames(groupMembers) { names ->
-                                    groupMemberNames = names
-                                }
-                                showMembersDialog = true
-                            },
+                            onClick = { showMembersDialog = true },
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text("Ver miembros")
@@ -273,7 +271,7 @@ fun GroupManagementScreen(navController: NavHostController) {
                     text = {
                         Column {
                             groupMemberNames.forEach { member ->
-                                Text(member)  // Mostrar los nombres de los miembros
+                                Text("Miembro: $member")  // Mostrar el nombre de cada miembro
                             }
                         }
                     },
@@ -290,7 +288,6 @@ fun GroupManagementScreen(navController: NavHostController) {
     )
 }
 
-
 fun leaveGroup(
     context: android.content.Context,
     userId: String,
@@ -305,7 +302,6 @@ fun leaveGroup(
     groupRef.update("Miembros", FieldValue.arrayRemove(userId))
         .addOnSuccessListener {
             Toast.makeText(context, "Has dejado el grupo", Toast.LENGTH_SHORT).show()
-            // Limpiar el estado
             updateGroupName("") // Vaciar el nombre del grupo
             updateIsUserInGroup(false) // El usuario ya no está en el grupo
         }
@@ -324,15 +320,12 @@ fun joinGroup(
     val firestore = FirebaseFirestore.getInstance()
     val groupCollection = firestore.collection("grupos")
 
-    // Verificar si el grupo existe
     val groupRef = groupCollection.document(groupName)
     groupRef.get().addOnSuccessListener { document ->
         if (document.exists()) {
-            // Si el grupo existe, añadir al usuario a la lista de miembros
             groupRef.update("Miembros", FieldValue.arrayUnion(userId))
                 .addOnSuccessListener {
                     Toast.makeText(context, "Te has unido al grupo $groupName", Toast.LENGTH_SHORT).show()
-                    // Actualizar el nombre del grupo actual
                     updateGroupName(groupName)
                     updateIsUserInGroup(true)
                 }
