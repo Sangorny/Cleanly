@@ -1,5 +1,6 @@
 package com.cleanly
 
+import android.content.Intent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -16,6 +17,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -33,11 +35,12 @@ fun Zonas(onZoneClick: (String) -> Unit) {
             "Cocina" to R.drawable.cocina,
             "Sala" to R.drawable.salon,
             "Dormitorio" to R.drawable.dormitorio
-             )
+        )
     }
     val showDialog = remember { mutableStateOf(false) }
     val newZoneName = remember { mutableStateOf("") }
     val selectedImage = remember { mutableStateOf<Int?>(null) }
+    val context = LocalContext.current // Obtén el contexto una vez aquí
 
     Box(
         modifier = Modifier
@@ -68,6 +71,7 @@ fun Zonas(onZoneClick: (String) -> Unit) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Llama a ZoneGrid pasando el contexto
             ZoneGrid(
                 zones = zones,
                 modifier = Modifier
@@ -75,8 +79,9 @@ fun Zonas(onZoneClick: (String) -> Unit) {
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
                 onZoneClick = { zoneName ->
-                    // Llama al callback con el nombre de la zona
-                    onZoneClick(zoneName)
+                    val intent = Intent(context, TareaActivity::class.java)
+                    intent.putExtra("zona", zoneName)
+                    context.startActivity(intent)
                 },
                 onAddZoneClick = { showDialog.value = true }
             )

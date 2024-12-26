@@ -22,6 +22,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 data class Tarea(
     val nombre: String,
     val puntos: Int,
+    val zona: String,
     var isChecked: Boolean = false
 )
 
@@ -33,7 +34,8 @@ fun CRUDTareas(
     onDelete: () -> Unit,
     onList: () -> Unit,
     onEdit: () -> Unit,
-    onTaskListUpdated: (List<Pair<String, Int>>) -> Unit
+    onTaskListUpdated: (List<Pair<String, Int>>) -> Unit,
+    zonaSeleccionada: String // Recibe la zona seleccionada
 ) {
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -44,6 +46,7 @@ fun CRUDTareas(
     var taskName by remember { mutableStateOf("") }
     var taskPoints by remember { mutableStateOf("") }
     var nombreOriginal by remember { mutableStateOf("") }
+
     val handleCreate = {
         if (taskName.isNotBlank() && taskPoints.isNotBlank()) {
             val puntos = taskPoints.toIntOrNull() ?: 0
@@ -51,13 +54,14 @@ fun CRUDTareas(
                 db = db,
                 nombre = taskName,
                 puntos = puntos,
+                zona = zonaSeleccionada, // Pasar la zona seleccionada
                 context = context,
                 onSuccess = {
                     showSnackbarMessage = "Tarea añadida correctamente"
                     onCreate()
                     taskName = ""
                     taskPoints = ""
-                    TareasBD.cargarTareasDesdeFirestore(db) { tareasRecargadas ->
+                    TareasBD.cargarTareasDesdeFirestore(db, zonaSeleccionada) { tareasRecargadas ->
                         onTaskListUpdated(tareasRecargadas.map { it.nombre to it.puntos })
                         showDialog = false
                     }
@@ -67,6 +71,7 @@ fun CRUDTareas(
             showDialog = false
         }
     }
+
     val handleEdit = {
         val tareasMarcadas = taskList.filter { tarea -> checkedStates[tarea.first] == true }
 
@@ -84,6 +89,7 @@ fun CRUDTareas(
             showEditDialog = true
         }
     }
+
     val handleDelete = {
         val tareasMarcadasCount = checkedStates.values.count { it }
         val nombresTareasMarcadas = taskList
@@ -98,7 +104,7 @@ fun CRUDTareas(
                 onSuccess = {
                     showSnackbarMessage = "$tareasMarcadasCount tareas borradas correctamente"
                     checkedStates.clear()
-                    TareasBD.cargarTareasDesdeFirestore(db) { tareasRecargadas ->
+                    TareasBD.cargarTareasDesdeFirestore(db, zonaSeleccionada) { tareasRecargadas ->
                         onTaskListUpdated(tareasRecargadas.map { it.nombre to it.puntos })
                     }
                     onDelete()
@@ -113,7 +119,7 @@ fun CRUDTareas(
     }
 
     val onList = {
-        TareasBD.cargarTareasDesdeFirestore(db) { listaTareas ->
+        TareasBD.cargarTareasDesdeFirestore(db, zonaSeleccionada) { listaTareas ->
             onTaskListUpdated(listaTareas.map { it.nombre to it.puntos })
             showSnackbarMessage = "Lista de tareas actualizada"
         }
@@ -137,6 +143,19 @@ fun CRUDTareas(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Mostrar el nombre de la zona seleccionada
+            Text(
+                text = "$zonaSeleccionada",
+                style = MaterialTheme.typography.headlineSmall.copy( // Copiar el estilo base
+                    fontSize = 24.sp, // Aumentar el tamaño de la letra
+                    fontWeight = FontWeight.Bold // Aplicar negrita
+                ),
+                color = Color.White, // Cambiar a blanco
+                modifier = Modifier.align(Alignment.Start) // Alinear a la izquierda
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             CRUDboton(
                 onCreate = { showDialog = true },
                 onEdit = handleEdit,
@@ -145,14 +164,6 @@ fun CRUDTareas(
             )
 
             Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "Lista de Tareas",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-
             Spacer(modifier = Modifier.height(16.dp))
 
             taskList.forEach { (task, puntos) ->
@@ -204,7 +215,6 @@ fun CRUDTareas(
             )
         }
 
-        // Diálogo para editar la tarea seleccionada
         if (showEditDialog) {
             AlertDialog(
                 onDismissRequest = { showEditDialog = false },
@@ -233,6 +243,7 @@ fun CRUDTareas(
                             nombreOriginal = nombreOriginal,
                             nuevoNombre = taskName,
                             nuevosPuntos = puntos,
+                            zona = zonaSeleccionada,
                             context = context,
                             onSuccess = {
                                 showSnackbarMessage = "Tarea actualizada correctamente"

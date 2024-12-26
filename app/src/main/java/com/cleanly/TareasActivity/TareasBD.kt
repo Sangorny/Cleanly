@@ -10,58 +10,46 @@ object TareasBD {
         db: FirebaseFirestore,
         nombre: String,
         puntos: Int,
+        zona: String, // Agregar la zona como parámetro
         context: Context,
         onSuccess: () -> Unit
     ) {
         val tarea = hashMapOf(
             "nombre" to nombre,
+            "puntos" to puntos,
+            "zona" to zona, // Incluir la zona en la tarea
             "completadoPor" to "",
-            "completadoEn" to null,
-            "puntos" to puntos
+            "completadoEn" to null
         )
         db.collection("MisTareas")
             .add(tarea)
             .addOnSuccessListener {
-                Toast.makeText(context, "Tarea añadida correctamente", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Tarea añadida correctamente a la zona $zona", Toast.LENGTH_SHORT).show()
                 onSuccess()
             }
             .addOnFailureListener {
-                Toast.makeText(context, "Error al añadir tarea", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Error al añadir tarea en la zona $zona", Toast.LENGTH_SHORT).show()
             }
     }
 
     fun cargarTareasDesdeFirestore(
         db: FirebaseFirestore,
+        zonaSeleccionada: String,
         onSuccess: (List<Tarea>) -> Unit
     ) {
         db.collection("MisTareas")
+            .whereEqualTo("zona", zonaSeleccionada) // Filtrar por la zona seleccionada
             .get()
             .addOnSuccessListener { result ->
                 val listaTareas = result.mapNotNull { document ->
                     val nombre = document.getString("nombre") ?: return@mapNotNull null
                     val puntos = document.getLong("puntos")?.toInt() ?: return@mapNotNull null
-                    Tarea(nombre, puntos)
+                    Tarea(nombre, puntos, zonaSeleccionada) // Crea el objeto Tarea
                 }
                 onSuccess(listaTareas)
             }
             .addOnFailureListener {
-            }
-    }
-
-    fun checkIfDefaultTasksExist(
-        db: FirebaseFirestore,
-        TAG: String,
-        onDefaultTasksNeeded: () -> Unit
-    ) {
-        db.collection("MisTareas")
-            .get()
-            .addOnSuccessListener { result ->
-                if (result.isEmpty) {
-                    onDefaultTasksNeeded()
-                }
-            }
-            .addOnFailureListener { e ->
-                println("Error al verificar las tareas: $e")
+                // Manejo del error
             }
     }
 
@@ -105,6 +93,7 @@ object TareasBD {
         nombreOriginal: String,
         nuevoNombre: String,
         nuevosPuntos: Int,
+        zona: String, // Agregar la zona si es necesario actualizarla también
         context: Context,
         onSuccess: () -> Unit,
         onFailure: () -> Unit = {}
@@ -120,7 +109,8 @@ object TareasBD {
                     val documentId = querySnapshot.documents.first().id
                     val tareaActualizada = hashMapOf(
                         "nombre" to nuevoNombre,
-                        "puntos" to nuevosPuntos
+                        "puntos" to nuevosPuntos,
+                        "zona" to zona // Actualizar la zona si es necesario
                     )
                     db.collection("MisTareas").document(documentId)
                         .update(tareaActualizada as Map<String, Any>)

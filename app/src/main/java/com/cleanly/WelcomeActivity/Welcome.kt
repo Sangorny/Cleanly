@@ -26,17 +26,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
-import androidx.compose.material.TopAppBar
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberImagePainter
-import com.cleanly.WelcomeActivity.GroupManagementActivity
+import com.cleanly.EstadisticaActivity.EstadisticasScreen
 import com.cleanly.WelcomeActivity.GroupManagementScreen
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.cleanly.shared.Tarea
-import com.cleanly.ZonaActivity.ZonasActivity
 import com.cleanly.WelcomeActivity.ProfileScreen
 import com.cleanly.WelcomeActivity.WelcomeBarra
 import com.cleanly.shared.welcomeBD
@@ -238,7 +236,8 @@ fun TareaItem(tarea: Tarea, onClick: (Tarea) -> Unit) {
 @Composable
 fun MainScreen(
     onNavigateToTarea: (Tarea) -> Unit,
-    onNavigateToZonas: () -> Unit
+    onNavigateToZonas: () -> Unit,
+    zonaSeleccionada: String? = null // Parámetro opcional
 ) {
     val navController = rememberNavController()
     val context = LocalContext.current
@@ -265,9 +264,7 @@ fun MainScreen(
                 photoUrl = photoUrl,
                 displayName = displayName,
                 onProfileClick = { navController.navigate("profile") },
-                onGroupManagementClick = {
-                    navController.navigate("group_management")
-                },
+                onGroupManagementClick = { navController.navigate("group_management") },
                 onLogoutClick = {
                     auth.signOut()
                     val intent = Intent(context, MainActivity::class.java)
@@ -287,7 +284,7 @@ fun MainScreen(
     ) { paddingValues ->
         NavHost(
             navController = navController,
-            startDestination = "welcome",
+            startDestination = if (zonaSeleccionada != null) "tarea" else "welcome",
             modifier = Modifier.padding(paddingValues)
         ) {
             composable("welcome") {
@@ -312,6 +309,14 @@ fun MainScreen(
                         photoUrl = updatedPhotoUrl
                     }
                 )
+            }
+            composable("estadisticas") {
+                EstadisticasScreen(navController = navController)
+            }
+            composable("tarea") {
+                if (zonaSeleccionada != null) {
+                    TareaScreen(navController = navController, zonaSeleccionada = zonaSeleccionada)
+                }
             }
         }
     }
