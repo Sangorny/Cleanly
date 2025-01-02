@@ -18,23 +18,20 @@ fun CRUDboton(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
+            .padding(8.dp),
         horizontalArrangement = Arrangement.SpaceAround
     ) {
         Button(onClick = onCreate, modifier = Modifier.weight(1f)) {
-            Text("Crear", fontSize = 10.sp)
+            Text("Agregar", fontSize = 16.sp)
         }
-        Spacer(modifier = Modifier.width(8.dp))
-        Button(onClick = onEdit, modifier = Modifier.weight(1f)) {
-            Text("Editar", fontSize = 10.sp)
-        }
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(4.dp))
         Button(onClick = onDelete, modifier = Modifier.weight(1f)) {
-            Text("Borrar", fontSize = 10.sp)
+            Text("Borrar", fontSize = 16.sp)
         }
-        Spacer(modifier = Modifier.width(8.dp))
-        Button(onClick = onList, modifier = Modifier.weight(1f)) {
-            Text("Listar", fontSize = 10.sp)
+        Spacer(modifier = Modifier.width(4.dp))
+        Button(onClick = onEdit, modifier = Modifier.weight(1f)) {
+            Text("Editar", fontSize = 16.sp)
         }
+
     }
 }

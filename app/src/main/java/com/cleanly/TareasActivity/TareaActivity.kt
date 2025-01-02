@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.cleanly.TareasActivity.CRUDTareas
+import com.cleanly.TareasActivity.Tarea
 import com.cleanly.TareasActivity.TareasBD
 import com.cleanly.WelcomeActivity.WelcomeBarra
 import com.cleanly.ZonaActivity.ZonasActivity
@@ -56,21 +57,19 @@ class TareaActivity : ComponentActivity() {
 @Composable
 fun TareaScreen(navController: NavHostController, zonaSeleccionada: String) {
     val db = FirebaseFirestore.getInstance()
-    val context = LocalContext.current
-    val taskList = remember { mutableStateListOf<Pair<String, Int>>() }
-    val updateTaskList: (List<Pair<String, Int>>) -> Unit = { newList ->
+    val taskList = remember { mutableStateListOf<Tarea>() } // Cambiar el tipo a List<Tarea>
+    val updateTaskList: (List<Tarea>) -> Unit = { newList ->
         taskList.clear()
         taskList.addAll(newList)
     }
 
     LaunchedEffect(zonaSeleccionada) {
         TareasBD.cargarTareasDesdeFirestore(db, zonaSeleccionada) { listaTareas ->
-            updateTaskList(listaTareas.map { it.nombre to it.puntos })
+            updateTaskList(listaTareas) // Pasar directamente List<Tarea>
         }
     }
 
-    Scaffold(
-    ) { paddingValues ->
+    Scaffold { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -78,18 +77,10 @@ fun TareaScreen(navController: NavHostController, zonaSeleccionada: String) {
         ) {
             CRUDTareas(
                 db = db,
-                taskList = taskList,
+                taskList = taskList, // Pasar List<Tarea>
                 onCreate = {
-                    TareasBD.agregarTareaAFirestore(
-                        db = db,
-                        nombre = "Nueva tarea",
-                        puntos = 50,
-                        zona = zonaSeleccionada,
-                        context = context
-                    ) {
-                        TareasBD.cargarTareasDesdeFirestore(db, zonaSeleccionada) { listaTareas ->
-                            updateTaskList(listaTareas.map { it.nombre to it.puntos })
-                        }
+                    TareasBD.cargarTareasDesdeFirestore(db, zonaSeleccionada) { listaTareas ->
+                        updateTaskList(listaTareas)
                     }
                 },
                 onDelete = { reloadTaskList(db, zonaSeleccionada, updateTaskList) },
@@ -105,9 +96,9 @@ fun TareaScreen(navController: NavHostController, zonaSeleccionada: String) {
 private fun reloadTaskList(
     db: FirebaseFirestore,
     zonaSeleccionada: String,
-    updateTaskList: (List<Pair<String, Int>>) -> Unit
+    updateTaskList: (List<Tarea>) -> Unit
 ) {
     TareasBD.cargarTareasDesdeFirestore(db, zonaSeleccionada) { listaTareas ->
-        updateTaskList(listaTareas.map { it.nombre to it.puntos })
+        updateTaskList(listaTareas) // Pasar directamente List<Tarea>
     }
 }

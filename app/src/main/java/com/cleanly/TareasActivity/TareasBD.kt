@@ -10,25 +10,27 @@ object TareasBD {
         db: FirebaseFirestore,
         nombre: String,
         puntos: Int,
-        zona: String, // Agregar la zona como parámetro
+        zona: String,
+        subzona: String, // Nuevo parámetro
         context: Context,
         onSuccess: () -> Unit
     ) {
         val tarea = hashMapOf(
             "nombre" to nombre,
             "puntos" to puntos,
-            "zona" to zona, // Incluir la zona en la tarea
+            "zona" to zona,
+            "subzona" to subzona, // Incluir subzona
             "completadoPor" to "",
             "completadoEn" to null
         )
         db.collection("MisTareas")
             .add(tarea)
             .addOnSuccessListener {
-                Toast.makeText(context, "Tarea añadida correctamente a la zona $zona", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Tarea añadida correctamente", Toast.LENGTH_SHORT).show()
                 onSuccess()
             }
             .addOnFailureListener {
-                Toast.makeText(context, "Error al añadir tarea en la zona $zona", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Error al añadir tarea", Toast.LENGTH_SHORT).show()
             }
     }
 
@@ -38,13 +40,14 @@ object TareasBD {
         onSuccess: (List<Tarea>) -> Unit
     ) {
         db.collection("MisTareas")
-            .whereEqualTo("zona", zonaSeleccionada) // Filtrar por la zona seleccionada
+            .whereEqualTo("zona", zonaSeleccionada)
             .get()
             .addOnSuccessListener { result ->
                 val listaTareas = result.mapNotNull { document ->
                     val nombre = document.getString("nombre") ?: return@mapNotNull null
                     val puntos = document.getLong("puntos")?.toInt() ?: return@mapNotNull null
-                    Tarea(nombre, puntos, zonaSeleccionada) // Crea el objeto Tarea
+                    val subzona = document.getString("subzona") ?: "Sin Subzona" // Leer subzona
+                    Tarea(nombre, puntos, zonaSeleccionada, subzona)
                 }
                 onSuccess(listaTareas)
             }
@@ -93,7 +96,8 @@ object TareasBD {
         nombreOriginal: String,
         nuevoNombre: String,
         nuevosPuntos: Int,
-        zona: String, // Agregar la zona si es necesario actualizarla también
+        zona: String,
+        nuevaSubzona: String, // Incluir subzona
         context: Context,
         onSuccess: () -> Unit,
         onFailure: () -> Unit = {}
@@ -110,7 +114,8 @@ object TareasBD {
                     val tareaActualizada = hashMapOf(
                         "nombre" to nuevoNombre,
                         "puntos" to nuevosPuntos,
-                        "zona" to zona // Actualizar la zona si es necesario
+                        "zona" to zona,
+                        "subzona" to nuevaSubzona // Actualizar subzona
                     )
                     db.collection("MisTareas").document(documentId)
                         .update(tareaActualizada as Map<String, Any>)

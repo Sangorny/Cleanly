@@ -31,6 +31,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberImagePainter
 import com.cleanly.EstadisticaActivity.EstadisticasScreen
+import com.cleanly.ProgramasActivity.ProgramarScreen
 import com.cleanly.WelcomeActivity.GroupManagementScreen
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -54,7 +55,7 @@ fun Welcome(
     var photoUrl by remember { mutableStateOf(currentUser?.photoUrl) }
 
     // Lista de pestañas
-    val tabTitles = listOf("Asignadas", "Pendientes", "De Otros")
+    val tabTitles = listOf("Asignadas", "Pendientes", "Otros")
     var selectedTabIndex by remember { mutableStateOf(0) }
 
     // Tareas desde Firebase
@@ -278,6 +279,7 @@ fun MainScreen(
                     "Mis Tareas" -> navController.navigate("welcome")
                     "Zonas" -> navController.navigate("zonas")
                     "Estadísticas" -> navController.navigate("estadisticas")
+                    "Programar" -> navController.navigate("programar") // Navegación a la pantalla Programar
                 }
             }
         }
@@ -312,6 +314,9 @@ fun MainScreen(
             }
             composable("estadisticas") {
                 EstadisticasScreen(navController = navController)
+            }
+            composable("programar") { // Nueva ruta para la pantalla Programar
+                ProgramarScreen(navController = navController)
             }
             composable("tarea") {
                 if (zonaSeleccionada != null) {

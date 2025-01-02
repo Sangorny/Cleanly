@@ -25,11 +25,5 @@ fun EstadisticasScreen(navController: NavHostController) {
             color = Color(0xFF0D47A1)
         )
 
-        Button(
-            onClick = { navController.navigate("welcome") }, // Ejemplo: Volver a Mis Tareas
-            modifier = Modifier.align(Alignment.BottomCenter)
-        ) {
-            Text("Volver a Mis Tareas")
-        }
     }
 }
