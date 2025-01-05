@@ -24,6 +24,7 @@ data class Tarea(
     val puntos: Int,
     val zona: String,
     val subzona: String = "Sin Subzona", // Campo opcional con un valor predeterminado
+    var prioridad: String = "Baja",     // Campo de prioridad con valor predeterminado
     var isChecked: Boolean = false
 )
 
@@ -48,17 +49,19 @@ fun CRUDTareas(
     var taskPoints by remember { mutableStateOf("") }
     var nombreOriginal by remember { mutableStateOf("") }
     var taskSubzona by remember { mutableStateOf("") }
-
+    var selectedPriority by remember { mutableStateOf("Baja") }
     val handleCreate = {
         if (taskName.isNotBlank() && taskPoints.isNotBlank()) {
             val puntos = taskPoints.toIntOrNull() ?: 0
             val subzona = taskSubzona.ifBlank { "Sin Subzona" }
+
             TareasBD.agregarTareaAFirestore(
                 db = db,
                 nombre = taskName,
-                puntos = puntos,
+                puntos = taskPoints.toIntOrNull() ?: 0,
                 zona = zonaSeleccionada,
-                subzona = subzona,
+                subzona = taskSubzona,
+                prioridad = selectedPriority, // Pasar la prioridad seleccionada
                 context = context,
                 onSuccess = {
                     showSnackbarMessage = "Tarea añadida correctamente"
@@ -66,6 +69,7 @@ fun CRUDTareas(
                     taskName = ""
                     taskPoints = ""
                     taskSubzona = ""
+                    selectedPriority = "Baja" // Reiniciar a la prioridad predeterminada
                     TareasBD.cargarTareasDesdeFirestore(db, zonaSeleccionada) { tareasRecargadas ->
                         onTaskListUpdated(tareasRecargadas)
                         showDialog = false
@@ -92,7 +96,8 @@ fun CRUDTareas(
             nombreOriginal = tareaSeleccionada.nombre
             taskName = tareaSeleccionada.nombre
             taskPoints = tareaSeleccionada.puntos.toString()
-            taskSubzona = tareaSeleccionada.subzona // Incluye subzona
+            taskSubzona = tareaSeleccionada.subzona
+            selectedPriority = tareaSeleccionada.prioridad // Cargar prioridad actual
             showEditDialog = true
         }
     }
@@ -178,10 +183,12 @@ fun CRUDTareas(
                     task = tarea.nombre,
                     puntos = tarea.puntos,
                     subzona = tarea.subzona,
+                    prioridad = tarea.prioridad,
                     isChecked = checkedStates[tarea.nombre] ?: false,
                     onCheckedChange = { isChecked -> checkedStates[tarea.nombre] = isChecked }
                 )
             }
+
 
 
             showSnackbarMessage?.let { message ->
@@ -191,6 +198,8 @@ fun CRUDTareas(
                 }
             }
             if (showDialog) {
+                var selectedPriority by remember { mutableStateOf("Baja") }
+
                 AlertDialog(
                     onDismissRequest = { showDialog = false },
                     title = { Text("Añadir Nueva Tarea") },
@@ -204,20 +213,38 @@ fun CRUDTareas(
                             TextField(
                                 value = taskSubzona,
                                 onValueChange = { taskSubzona = it },
-                                label = { Text("Si hay más zonas en la casa (Aseo Principal, Secundario, etc...") },
+                                label = { Text("Subzona") },
                                 modifier = Modifier.fillMaxWidth().padding(8.dp)
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
                             TextField(
                                 value = taskPoints,
                                 onValueChange = { taskPoints = it },
                                 label = { Text("Puntos") },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                             )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("Prioridad:")
+                            DropdownPrioridad(
+                                selectedPriority = selectedPriority,
+                                onPriorityChange = { selectedPriority = it }
+                            )
                         }
                     },
                     confirmButton = {
-                        Button(onClick = handleCreate) {
+                        Button(onClick = {
+                            // Pasar directamente la prioridad al crear la tarea
+                            TareasBD.agregarTareaAFirestore(
+                                db = db,
+                                nombre = taskName,
+                                puntos = taskPoints.toIntOrNull() ?: 0,
+                                zona = zonaSeleccionada,
+                                subzona = taskSubzona,
+                                prioridad = selectedPriority, // Prioridad seleccionada
+                                context = context,
+                                onSuccess = { onList() }
+                            )
+                            showDialog = false // Cerrar el diálogo después de agregar la tarea
+                        }) {
                             Text("Add")
                         }
                     },
@@ -240,42 +267,39 @@ fun CRUDTareas(
                                 onValueChange = { taskName = it },
                                 label = { Text("Nombre de la Tarea") }
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
                             TextField(
                                 value = taskPoints,
                                 onValueChange = { taskPoints = it },
                                 label = { Text("Puntos") },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
                             TextField(
                                 value = taskSubzona,
                                 onValueChange = { taskSubzona = it },
-                                label = { Text("Si hay más zonas en la casa (Aseo Principal, Secundario, etc...") }
+                                label = { Text("Subzona") }
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("Prioridad:")
+                            DropdownPrioridad(
+                                selectedPriority = selectedPriority,
+                                onPriorityChange = { selectedPriority = it }
                             )
                         }
                     },
                     confirmButton = {
                         Button(onClick = {
-                            val puntos = taskPoints.toIntOrNull() ?: 0
                             TareasBD.actualizarTareaEnFirestore(
                                 db = db,
                                 nombreOriginal = nombreOriginal,
                                 nuevoNombre = taskName,
-                                nuevosPuntos = puntos,
+                                nuevosPuntos = taskPoints.toIntOrNull() ?: 0,
                                 zona = zonaSeleccionada,
-                                nuevaSubzona = taskSubzona, // Pasar la subzona editada
+                                nuevaSubzona = taskSubzona,
+                                nuevaPrioridad = selectedPriority, // Pasar la prioridad actualizada
                                 context = context,
-                                onSuccess = {
-                                    showSnackbarMessage = "Tarea actualizada correctamente"
-                                    showEditDialog = false
-                                    onList()
-                                },
-                                onFailure = {
-                                    showSnackbarMessage = "Error al actualizar la tarea"
-                                    showEditDialog = false
-                                }
+                                onSuccess = { onList() }
                             )
+                            showEditDialog = false
                         }) {
                             Text("Aceptar")
                         }
@@ -290,52 +314,103 @@ fun CRUDTareas(
         }
     }
 }
-    @Composable
-    fun TaskRow(
-        task: String,
-        puntos: Int,
-        subzona: String?, // Subzona opcional
-        isChecked: Boolean,
-        onCheckedChange: (Boolean) -> Unit
+
+
+@Composable
+fun TaskRow(
+    task: String,
+    puntos: Int,
+    subzona: String?, // Subzona opcional
+    prioridad: String, // Añadir prioridad
+    isChecked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color.LightGray.copy(alpha = 0.3f))
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .background(Color.LightGray.copy(alpha = 0.3f))
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = task,
-                    fontWeight = FontWeight.Bold,
-                    style = TextStyle(fontSize = 14.sp, color = Color.White)
-                )
-                if (!subzona.isNullOrEmpty() && subzona != "Sin Subzona") {
-                    Text(
-                        text = "Subzona: $subzona",
-                        style = TextStyle(fontSize = 10.sp, color = Color.White)
-                    )
-                }
-            }
-
+        // Columna con nombre de tarea y subzona
+        Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "$puntos puntos",
-                style = TextStyle(fontSize = 12.sp, color = Color.White),
-                modifier = Modifier.weight(0.5f)
+                text = task,
+                fontWeight = FontWeight.Bold,
+                style = TextStyle(fontSize = 14.sp, color = Color.White)
             )
 
-            Checkbox(
-                checked = isChecked,
-                onCheckedChange = onCheckedChange,
-                colors = CheckboxDefaults.colors(
-                    checkedColor = Color.Green,
-                    uncheckedColor = Color.White
-                ),
-                modifier = Modifier.weight(0.2f)
-            )
+            if (!subzona.isNullOrEmpty() && subzona != "Sin Subzona") {
+                Text(
+                    text = "Subzona: $subzona",
+                    style = TextStyle(fontSize = 10.sp, color = Color.White)
+                )
+            }
         }
-        Spacer(modifier = Modifier.height(8.dp))
+
+        // Texto de prioridad
+        val prioridadColor = when (prioridad) {
+            "Baja" -> Color.Green
+            "Normal" -> Color.Yellow
+            "Urgente" -> Color.Red
+            else -> Color.Gray
+        }
+
+        Text(
+            text = prioridad,
+            fontWeight = FontWeight.Bold,
+            style = TextStyle(fontSize = 12.sp, color = prioridadColor),
+            modifier = Modifier.padding(horizontal = 16.dp) // Añadir más separación horizontal
+        )
+
+
+        Spacer(modifier = Modifier.width(20.dp))
+
+        // Texto de puntos
+        Text(
+            text = "$puntos puntos",
+            style = TextStyle(fontSize = 12.sp, color = Color.White),
+            modifier = Modifier.padding(end = 8.dp)
+        )
+
+        // Checkbox
+        Checkbox(
+            checked = isChecked,
+            onCheckedChange = onCheckedChange,
+            colors = CheckboxDefaults.colors(
+                checkedColor = Color.Green,
+                uncheckedColor = Color.White
+            )
+        )
     }
+    Spacer(modifier = Modifier.height(8.dp))
+}
+
+@Composable
+fun DropdownPrioridad(selectedPriority: String, onPriorityChange: (String) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    val priorities = listOf("Baja", "Normal", "Urgente")
+
+    Box(modifier = Modifier.fillMaxWidth()) {
+        TextButton(onClick = { expanded = true }) {
+            Text(text = selectedPriority, color = Color.Black)
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            priorities.forEach { priority ->
+                DropdownMenuItem(
+                    text = { Text(priority) },
+                    onClick = {
+                        onPriorityChange(priority)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
+

@@ -52,11 +52,9 @@ fun Welcome(
 ) {
     val auth = FirebaseAuth.getInstance()
     val currentUser = auth.currentUser
-    val context = LocalContext.current
 
     // Información del usuario
     val displayName = currentUser?.displayName ?: "Usuario"
-    var photoUrl by remember { mutableStateOf(currentUser?.photoUrl) }
 
     // Lista de pestañas
     val tabTitles = listOf("Asignadas", "Pendientes", "Otros")

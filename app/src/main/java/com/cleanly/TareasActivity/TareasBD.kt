@@ -12,6 +12,7 @@ object TareasBD {
         puntos: Int,
         zona: String,
         subzona: String, // Nuevo parámetro
+        prioridad: String, // Agregar prioridad
         context: Context,
         onSuccess: () -> Unit
     ) {
@@ -20,6 +21,7 @@ object TareasBD {
             "puntos" to puntos,
             "zona" to zona,
             "subzona" to subzona, // Incluir subzona
+            "prioridad" to prioridad, // Incluir prioridad
             "completadoPor" to "",
             "completadoEn" to null
         )
@@ -46,8 +48,9 @@ object TareasBD {
                 val listaTareas = result.mapNotNull { document ->
                     val nombre = document.getString("nombre") ?: return@mapNotNull null
                     val puntos = document.getLong("puntos")?.toInt() ?: return@mapNotNull null
-                    val subzona = document.getString("subzona") ?: "Sin Subzona" // Leer subzona
-                    Tarea(nombre, puntos, zonaSeleccionada, subzona)
+                    val subzona = document.getString("subzona") ?: "Sin Subzona"
+                    val prioridad = document.getString("prioridad") ?: "Baja" // Leer prioridad o usar "Baja"
+                    Tarea(nombre, puntos, zonaSeleccionada, subzona, prioridad)
                 }
                 onSuccess(listaTareas)
             }
@@ -98,6 +101,7 @@ object TareasBD {
         nuevosPuntos: Int,
         zona: String,
         nuevaSubzona: String, // Incluir subzona
+        nuevaPrioridad: String, // Incluir prioridad
         context: Context,
         onSuccess: () -> Unit,
         onFailure: () -> Unit = {}
@@ -115,7 +119,8 @@ object TareasBD {
                         "nombre" to nuevoNombre,
                         "puntos" to nuevosPuntos,
                         "zona" to zona,
-                        "subzona" to nuevaSubzona // Actualizar subzona
+                        "subzona" to nuevaSubzona, // Actualizar subzona
+                        "prioridad" to nuevaPrioridad // Actualizar prioridad
                     )
                     db.collection("MisTareas").document(documentId)
                         .update(tareaActualizada as Map<String, Any>)

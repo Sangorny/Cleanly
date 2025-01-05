@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.rememberImagePainter
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
+import com.google.firebase.firestore.FirebaseFirestore
 
 class ProfileScreen : ComponentActivity() {
 
@@ -184,13 +185,27 @@ class ProfileScreen : ComponentActivity() {
 
         user?.updateProfile(profileUpdates)?.addOnCompleteListener { task ->
             if (task.isSuccessful) {
+                // Actualizar en Firebase Authentication
                 Toast.makeText(context, "Perfil actualizado", Toast.LENGTH_SHORT).show()
-                user.reload()
+
+                // Ahora actualizamos el nombre de usuario en la colección "Usuarios" de Firestore
+                val userId = user.uid
+                val userRef = FirebaseFirestore.getInstance().collection("Usuarios").document(userId)
+
+                // Actualizamos el campo "nombre" en Firestore
+                userRef.update("nombre", displayName)
+                    .addOnSuccessListener {
+                        Toast.makeText(context, "Nombre actualizado en Firestore", Toast.LENGTH_SHORT).show()
+                    }
+                    .addOnFailureListener { e ->
+                        Toast.makeText(context, "Error al actualizar el nombre en Firestore: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
             } else {
                 Toast.makeText(context, "Error al actualizar el perfil", Toast.LENGTH_SHORT).show()
             }
         }
     }
+
 
     private fun updateProfilePicture(uri: Uri, context: Context, onComplete: (Uri) -> Unit) {
         val user = FirebaseAuth.getInstance().currentUser
