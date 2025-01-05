@@ -2,6 +2,7 @@ package com.cleanly
 
 import android.content.Intent
 import android.net.Uri
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -39,6 +40,9 @@ import com.cleanly.shared.Tarea
 import com.cleanly.WelcomeActivity.ProfileScreen
 import com.cleanly.WelcomeActivity.WelcomeBarra
 import com.cleanly.shared.welcomeBD
+import com.cleanly.shared.welcomeBD.actualizarCompletadoPor
+import com.cleanly.shared.welcomeBD.asignarTareaAFirestore
+
 
 
 @Composable
@@ -118,16 +122,49 @@ fun Welcome(
                         // Mostrar tareas filtradas según la pestaña seleccionada
                         when (selectedTabIndex) {
                             0 -> MostrarTareasFiltradas(
-                                tareas.filter { it.usuario == "Antonio" },
-                                onTareaClick = onTareaClick // Pasa el callback aquí
+                                tareas.filter { it.usuario == displayName && it.completadoPor.isNullOrEmpty() },
+                                onTareaClick = onTareaClick,
+                                mostrarAsignado = true,
+                                onCompletarTarea = { tarea ->
+                                    actualizarCompletadoPor(
+                                        db = FirebaseFirestore.getInstance(),
+                                        tarea = tarea,
+                                        onSuccess = {
+                                            Log.d("Firestore", "Tarea completada por $displayName")
+                                            welcomeBD.cargarTareasDesdeFirestore(FirebaseFirestore.getInstance()) { listaTareas ->
+                                                tareas = listaTareas ?: emptyList() // Refrescar la lista
+                                            }
+                                        },
+                                        onFailure = {
+                                            Log.e("Firestore", "Error al completar tarea")
+                                        }
+                                    )
+                                }
                             )
                             1 -> MostrarTareasFiltradas(
-                                tareas.filter { it.usuario.isNullOrEmpty() },
-                                onTareaClick = onTareaClick // Pasa el callback aquí
+                                tareas.filter { it.usuario.isNullOrEmpty() && it.completadoPor.isNullOrEmpty() },
+                                onTareaClick = onTareaClick,
+                                mostrarAsignado = false,
+                                onAsignarTarea = { tarea ->
+                                    asignarTareaAFirestore(
+                                        db = FirebaseFirestore.getInstance(),
+                                        tarea = tarea,
+                                        onSuccess = {
+                                            Log.d("Firestore", "Tarea asignada correctamente")
+                                            welcomeBD.cargarTareasDesdeFirestore(FirebaseFirestore.getInstance()) { listaTareas ->
+                                                tareas = listaTareas ?: emptyList() // Refrescar la lista
+                                            }
+                                        },
+                                        onFailure = {
+                                            Log.e("Firestore", "Error al asignar tarea")
+                                        }
+                                    )
+                                }
                             )
                             2 -> MostrarTareasFiltradas(
-                                tareas.filter { it.usuario != "Antonio" && !it.usuario.isNullOrEmpty() },
-                                onTareaClick = onTareaClick // Pasa el callback aquí
+                                tareas.filter { it.usuario != displayName && !it.usuario.isNullOrEmpty() && it.completadoPor.isNullOrEmpty() }, // Mostrar tareas de otros usuarios no completadas
+                                onTareaClick = onTareaClick,
+                                mostrarAsignado = true
                             )
                         }
                     }
@@ -190,7 +227,13 @@ fun WelcomeTopBar(
 }
 
 @Composable
-fun MostrarTareasFiltradas(tareas: List<Tarea>, onTareaClick: (Tarea) -> Unit) {
+fun MostrarTareasFiltradas(
+    tareas: List<Tarea>,
+    onTareaClick: (Tarea) -> Unit,
+    mostrarAsignado: Boolean,
+    onCompletarTarea: ((Tarea) -> Unit)? = null,
+    onAsignarTarea: ((Tarea) -> Unit)? = null
+) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -200,36 +243,110 @@ fun MostrarTareasFiltradas(tareas: List<Tarea>, onTareaClick: (Tarea) -> Unit) {
         items(tareas) { tarea ->
             TareaItem(
                 tarea = tarea,
-                onClick = onTareaClick // Llama al callback aquí
+                onClick = onTareaClick,
+                mostrarAsignado = mostrarAsignado,
+                onCompletarTarea = if (onCompletarTarea != null && !tarea.usuario.isNullOrEmpty()) {
+                    { onCompletarTarea(tarea) }
+                } else null,
+                onAsignarTarea = if (onAsignarTarea != null && tarea.usuario.isNullOrEmpty()) {
+                    { onAsignarTarea(tarea) }
+                } else null
             )
         }
     }
 }
 
 @Composable
-fun TareaItem(tarea: Tarea, onClick: (Tarea) -> Unit) {
+fun TareaItem(
+    tarea: Tarea,
+    onClick: (Tarea) -> Unit,
+    mostrarAsignado: Boolean = true,
+    onCompletarTarea: (() -> Unit)? = null, // Callback opcional para completar tarea
+    onAsignarTarea: (() -> Unit)? = null   // Callback opcional para asignar tarea
+) {
+    var mostrarDialogoCompletar by remember { mutableStateOf(false) }
+    var mostrarDialogoAsignar by remember { mutableStateOf(false) }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color.Gray.copy(alpha = 0.3f))
             .padding(16.dp)
             .clip(MaterialTheme.shapes.medium)
-            .clickable { onClick(tarea) } // Llama al callback al hacer clic
+            .clickable {
+                if (onCompletarTarea != null) {
+                    mostrarDialogoCompletar = true // Mostrar menú para completar tarea
+                } else if (onAsignarTarea != null) {
+                    mostrarDialogoAsignar = true // Mostrar menú para asignar tarea
+                }
+            }
     ) {
-        Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Nombre de la tarea
             Text(
                 text = tarea.nombre,
                 color = Color.White,
                 style = MaterialTheme.typography.bodyLarge
             )
-            if (tarea.usuario != null) {
+
+            // Nombre del usuario si está asignado y se debe mostrar
+            if (mostrarAsignado && !tarea.usuario.isNullOrEmpty()) {
                 Text(
-                    text = "Asignado a: ${tarea.usuario}",
-                    color = Color.LightGray,
+                    text = tarea.usuario,
+                    color = Color.Yellow,
+                    fontSize = 16.sp,
                     style = MaterialTheme.typography.bodySmall
                 )
             }
         }
+    }
+
+    // Menú para completar tarea
+    if (mostrarDialogoCompletar) {
+        AlertDialog(
+            onDismissRequest = { mostrarDialogoCompletar = false },
+            title = { Text("¿Marcar tarea como completada?") },
+            text = { Text("Selecciona una opción:") },
+            confirmButton = {
+                Button(onClick = {
+                    onCompletarTarea?.invoke() // Llamar al callback de completar tarea
+                    mostrarDialogoCompletar = false
+                }) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                Button(onClick = { mostrarDialogoCompletar = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+
+    // Menú para asignar tarea
+    if (mostrarDialogoAsignar) {
+        AlertDialog(
+            onDismissRequest = { mostrarDialogoAsignar = false },
+            title = { Text("¿Quieres asignarte esta tarea?") },
+            text = { Text("Si aceptas, esta tarea será asignada a tu usuario.") },
+            confirmButton = {
+                Button(onClick = {
+                    onAsignarTarea?.invoke() // Llamar al callback de asignar tarea
+                    mostrarDialogoAsignar = false
+                }) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                Button(onClick = { mostrarDialogoAsignar = false }) {
+                    Text("No")
+                }
+            }
+        )
     }
 }
 

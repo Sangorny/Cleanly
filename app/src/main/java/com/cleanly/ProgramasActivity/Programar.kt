@@ -280,7 +280,7 @@ fun TareaItem(tarea: Tarea, onProgramarTarea: (Tarea) -> Unit) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween // Para alinear la subzona a la derecha
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
                 text = tarea.nombre,

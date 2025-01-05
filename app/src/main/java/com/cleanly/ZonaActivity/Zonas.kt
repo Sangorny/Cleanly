@@ -35,7 +35,7 @@ fun Zonas(onZoneClick: (String) -> Unit) {
         "Cocina" to R.drawable.cocina,
         "Sala" to R.drawable.salon,
         "Dormitorio" to R.drawable.dormitorio,
-        "Garaje" to R.drawable.default1,
+        "Garaje/Trastero" to R.drawable.default1,
         "Exterior" to R.drawable.default5
     )
 
