@@ -345,7 +345,7 @@ fun TaskRow(
             if (!subzona.isNullOrEmpty() && subzona != "Sin Subzona") {
                 Text(
                     text = "Subzona: $subzona",
-                    style = TextStyle(fontSize = 10.sp, color = Color.White)
+                    style = TextStyle(fontSize = 12.sp, color = Color.White)
                 )
             }
         }

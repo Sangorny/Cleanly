@@ -1,6 +1,10 @@
 package com.cleanly.ProgramasActivity
 
+import android.content.pm.PackageManager
+import android.os.Build
 import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -30,11 +34,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.google.firebase.firestore.FirebaseFirestore
+import java.util.jar.Manifest
 
 data class Tarea(
     val nombre: String,
@@ -51,12 +57,29 @@ fun ProgramarScreen(navController: NavHostController) {
     var tareaSeleccionada by remember { mutableStateOf<Tarea?>(null) }
     var mostrarDialogo by remember { mutableStateOf(false) }
     val firestore = FirebaseFirestore.getInstance()
-
+    val context = LocalContext.current
     // Pestañas
     val tabTitles = listOf("Sin Programar", "Diarias", "Semanales", "Mensuales")
     var selectedTabIndex by remember { mutableStateOf(0) }
 
+    // PERMISO NOTIFICACIONES
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            Log.d("Permisos", "Permiso para notificaciones concedido")
+        } else {
+            Log.e("Permisos", "Permiso para notificaciones denegado")
+        }
+    }
     LaunchedEffect(Unit) {
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            launcher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+
         cargarTodasLasTareasDesdeFirestore(
             db = firestore,
             onSuccess = { tareas ->
