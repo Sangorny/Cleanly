@@ -64,7 +64,7 @@ fun RegisterScreen(navController: NavHostController) {
 
         Button(onClick = {
             if (password == confirmPassword) {
-                createAccount(email, password, nick, context)
+                createAccount(email, password, nick, context, navController)
             } else {
                 Toast.makeText(
                     context,

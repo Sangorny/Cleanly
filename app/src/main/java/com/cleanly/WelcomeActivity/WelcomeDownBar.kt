@@ -16,7 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 
 @Composable
-fun WelcomeBarra(onNavigate: (String) -> Unit) {
+fun WelcomeDownBar(onNavigate: (String) -> Unit) {
     val selectedItem = remember { mutableStateOf(0) }
     val items = listOf("Mis Tareas", "Zonas", "Programar", "Estadísticas")
     val icons = listOf(

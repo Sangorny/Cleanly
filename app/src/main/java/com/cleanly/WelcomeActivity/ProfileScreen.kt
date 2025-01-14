@@ -25,122 +25,159 @@ import androidx.navigation.NavController
 import coil.compose.rememberImagePainter
 import com.cleanly.R
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.UserProfileChangeRequest
+import com.google.firebase.firestore.FirebaseFirestore
 
-// Ahora ProfileScreen es un Composable
 @Composable
 fun ProfileScreen(
     navController: NavController,
-    onProfileUpdated: (String, Uri?) -> Unit // Callback para actualizar el perfil en MainScreen
+    grupoId: String, // El grupo al que pertenece el usuario
+    userId: String,  // El UID del usuario autenticado
+    onProfileUpdated: (String, Uri?) -> Unit
 ) {
-    val auth = FirebaseAuth.getInstance()
-    val currentUser = auth.currentUser
-    var displayName by remember { mutableStateOf(currentUser?.displayName ?: "") }
-    var email by remember { mutableStateOf(currentUser?.email ?: "") }
-    var photoUrl by remember { mutableStateOf(currentUser?.photoUrl) }
-    var selectedAvatar by remember { mutableStateOf(photoUrl ?: R.drawable.default_avatar) }
+    val firestore = FirebaseFirestore.getInstance()
+    var displayName by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var selectedAvatar by remember { mutableStateOf(R.drawable.default_avatar) }
+    var isLoading by remember { mutableStateOf(true) }
 
-    // Lista de avatares predefinidos
+    // Obtener los datos del usuario desde Firestore
+    LaunchedEffect(Unit) {
+        firestore.collection("grupos").document(grupoId)
+            .collection("usuarios").document(userId)
+            .get()
+            .addOnSuccessListener { document ->
+                if (document.exists()) {
+                    displayName = document.getString("nombre") ?: ""
+                    email = document.getString("email") ?: ""
+                    selectedAvatar = document.getLong("avatar")?.toInt() ?: R.drawable.default_avatar // Cargar avatar
+                }
+                isLoading = false
+            }
+            .addOnFailureListener {
+                isLoading = false
+            }
+    }
+
+    if (isLoading) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+    } else {
+        ProfileContent(
+            navController = navController,
+            grupoId = grupoId,
+            userId = userId,
+            displayName = displayName,
+            email = email,
+            selectedAvatar = selectedAvatar,
+            onProfileUpdated = onProfileUpdated
+        )
+    }
+}
+
+@Composable
+fun ProfileContent(
+    navController: NavController,
+    grupoId: String,
+    userId: String,
+    displayName: String,
+    email: String,
+    selectedAvatar: Int,
+    onProfileUpdated: (String, Uri?) -> Unit
+) {
+    val firestore = FirebaseFirestore.getInstance()
+    var updatedDisplayName by remember { mutableStateOf(displayName) }
+    var updatedEmail by remember { mutableStateOf(email) }
+    var selectedAvatarState by remember { mutableStateOf(selectedAvatar) }
+
+    Scaffold(
+        content = { paddingValues ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color(0xFF0D47A1), Color(0xFF00E676))
+                        )
+                    )
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Cambiar avatar
+                AvatarSection(
+                    selectedAvatar = selectedAvatarState,
+                    onAvatarSelected = { selectedAvatarState = it }
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Cambiar nombre
+                Text("Nombre", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.White)
+                BasicTextField(
+                    value = updatedDisplayName,
+                    onValueChange = { updatedDisplayName = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp)
+                        .background(Color.White, shape = CircleShape)
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Botón para guardar cambios
+                Button(onClick = {
+                    saveProfileChanges(
+                        grupoId = grupoId,
+                        userId = userId,
+                        displayName = updatedDisplayName,
+                        avatar = selectedAvatarState,
+                        firestore = firestore,
+                        onSuccess = {
+                            val newAvatarUri = Uri.parse("android.resource://com.cleanly/drawable/$selectedAvatarState")
+                            onProfileUpdated(updatedDisplayName, newAvatarUri) // Callback para actualizar la barra superior
+                            Toast.makeText(navController.context, "Perfil actualizado", Toast.LENGTH_SHORT).show()
+                        },
+                        onFailure = {
+                            Toast.makeText(navController.context, "Error al actualizar perfil", Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                }) {
+                    Text("Guardar cambios")
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Botón para restablecer contraseña
+                Button(onClick = {
+                    resetPassword(updatedEmail, navController.context)
+                }) {
+                    Text("Restablecer Contraseña")
+                }
+            }
+        }
+    )
+}
+
+@Composable
+fun AvatarSection(selectedAvatar: Int, onAvatarSelected: (Int) -> Unit) {
     val avatars = listOf(
         R.drawable.avatar_1, R.drawable.avatar_2, R.drawable.avatar_3, R.drawable.avatar_4
     )
 
-    Scaffold(
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(Color(0xFF0D47A1), Color(0xFF00E676))
-                    )
-                )
-                .padding(paddingValues),
-            horizontalAlignment = Alignment.CenterHorizontally
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text("Selecciona un avatar", color = Color.White, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.fillMaxWidth()
         ) {
-            // Imagen de perfil
-            Image(
-                painter = rememberImagePainter(data = selectedAvatar),
-                contentDescription = "Foto de perfil",
-                modifier = Modifier
-                    .size(100.dp)
-                    .clip(CircleShape)
-                    .background(Color.Gray),
-                contentScale = ContentScale.Crop
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Mostrar los avatares disponibles
-            Text(text = "Selecciona un avatar", color = Color.White, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                avatars.forEach { avatar ->
-                    AvatarOption(avatar = avatar, onClick = { selectedAvatar = avatar })
+            avatars.forEach { avatar ->
+                AvatarOption(avatar = avatar) {
+                    onAvatarSelected(avatar) // Cambiar avatar seleccionado
                 }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Nombre
-            Text(text = "Nombre", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.White)
-            BasicTextField(
-                value = displayName,
-                onValueChange = { displayName = it },
-                textStyle = MaterialTheme.typography.bodyLarge.copy(color = Color.White),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp)
-                    .background(Color.LightGray, shape = MaterialTheme.shapes.small)
-                    .padding(16.dp)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Correo electrónico
-            Text(text = "Correo electrónico", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.White)
-            BasicTextField(
-                value = email,
-                onValueChange = { email = it },
-                textStyle = MaterialTheme.typography.bodyLarge.copy(color = Color.White),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp)
-                    .background(Color.LightGray, shape = MaterialTheme.shapes.small)
-                    .padding(16.dp)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Guardar cambios
-            Button(onClick = {
-                if (displayName.isNotBlank()) {
-                    val avatarUri = Uri.parse("android.resource://com.cleanly/drawable/$selectedAvatar")
-                    updateUserProfile(displayName, avatarUri) { success ->
-                        if (success) {
-                            // Llama al callback para actualizar MainScreen
-                            onProfileUpdated(displayName, avatarUri)
-                            Toast.makeText(navController.context, "Perfil actualizado", Toast.LENGTH_SHORT).show()
-                        } else {
-                            Toast.makeText(navController.context, "Error al actualizar el perfil", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                } else {
-                    Toast.makeText(navController.context, "El nombre no puede estar vacío", Toast.LENGTH_SHORT).show()
-                }
-            }) {
-                Text("Guardar cambios")
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Cambiar contraseña
-            Button(onClick = { resetPassword(email, navController.context) }) {
-                Text("Cambiar contraseña")
             }
         }
     }
@@ -159,37 +196,39 @@ fun AvatarOption(avatar: Int, onClick: () -> Unit) {
     )
 }
 
-// Función para actualizar el perfil en Firebase Authentication
-fun updateUserProfile(
+fun saveProfileChanges(
+    grupoId: String,
+    userId: String,
     displayName: String,
-    photoUrl: Uri?,
-    onComplete: (Boolean) -> Unit
+    avatar: Int,
+    firestore: FirebaseFirestore,
+    onSuccess: () -> Unit,
+    onFailure: (Exception) -> Unit
 ) {
-    val user = FirebaseAuth.getInstance().currentUser
-    val profileUpdates = UserProfileChangeRequest.Builder()
-        .setDisplayName(displayName)
-        .setPhotoUri(photoUrl)
-        .build()
+    val userData = mapOf(
+        "nombre" to displayName,
+        "avatar" to avatar // Guardar el avatar seleccionado
+    )
 
-    user?.updateProfile(profileUpdates)?.addOnCompleteListener { task ->
-        if (task.isSuccessful) {
-            // Recargamos el usuario después de la actualización
-            user.reload().addOnCompleteListener {
-                onComplete(it.isSuccessful)
-            }
-        } else {
-            onComplete(false)
-        }
-    }
+    firestore.collection("grupos").document(grupoId)
+        .collection("usuarios").document(userId)
+        .update(userData)
+        .addOnSuccessListener { onSuccess() }
+        .addOnFailureListener { onFailure(it) }
 }
 
-// Función para restablecer la contraseña
 fun resetPassword(email: String, context: Context) {
-    FirebaseAuth.getInstance().sendPasswordResetEmail(email).addOnCompleteListener { task ->
-        if (task.isSuccessful) {
-            Toast.makeText(context, "Correo de restablecimiento de contraseña enviado", Toast.LENGTH_SHORT).show()
-        } else {
-            Toast.makeText(context, "Error al enviar correo de restablecimiento", Toast.LENGTH_SHORT).show()
-        }
+    if (email.isBlank()) {
+        Toast.makeText(context, "Introduce un correo válido", Toast.LENGTH_SHORT).show()
+        return
     }
+
+    FirebaseAuth.getInstance().sendPasswordResetEmail(email)
+        .addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                Toast.makeText(context, "Correo de restablecimiento enviado a $email", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(context, "Error: ${task.exception?.localizedMessage}", Toast.LENGTH_SHORT).show()
+            }
+        }
 }

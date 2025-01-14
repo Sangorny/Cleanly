@@ -7,7 +7,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
-import com.cleanly.WelcomeActivity.WelcomeBarra
+import com.cleanly.WelcomeActivity.WelcomeDownBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

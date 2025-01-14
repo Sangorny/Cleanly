@@ -19,7 +19,7 @@ import androidx.navigation.compose.rememberNavController
 import com.cleanly.TareasActivity.CRUDTareas
 import com.cleanly.TareasActivity.Tarea
 import com.cleanly.TareasActivity.TareasBD
-import com.cleanly.WelcomeActivity.WelcomeBarra
+import com.cleanly.WelcomeActivity.WelcomeDownBar
 import com.cleanly.ZonaActivity.ZonasActivity
 import com.cleanly.ui.theme.CleanlyTheme
 import com.google.firebase.auth.FirebaseAuth

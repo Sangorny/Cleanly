@@ -6,7 +6,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.cleanly.WelcomeActivity.GroupManagementScreen
+import com.cleanly.PerfilActivity.GroupManagementScreen
 import com.cleanly.WelcomeActivity.ProfileScreen
 import com.google.firebase.auth.FirebaseAuth
 
@@ -62,22 +62,26 @@ fun AppNavigation() {
             MisTareasScreen(navController)  // Asegúrate de tener la barra aquí
         }
 
-        // Pantalla Profile con el callback onProfileUpdated
         composable("profile") {
+            val grupoId = "id_del_grupo_actual" // Obtén esto dinámicamente
+            val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
             ProfileScreen(
                 navController = navController,
+                grupoId = grupoId,
+                userId = userId,
                 onProfileUpdated = { updatedDisplayName, updatedPhotoUrl ->
-                    // Aquí puedes manejar cómo se actualizan los datos en MainScreen o AppNavigation
+                    // Maneja actualizaciones si es necesario
                 }
             )
         }
 
-        // Pantalla de gestión de grupos
         composable("group_management") {
-            val context = LocalContext.current
             val auth = FirebaseAuth.getInstance()
             val userId = auth.currentUser?.uid ?: ""
-            GroupManagementScreen(context = context, userId = userId)
+            GroupManagementScreen(
+                navController = navController, // Asegúrate de pasar el controlador de navegación
+                userId = userId
+            )
         }
     }
 }

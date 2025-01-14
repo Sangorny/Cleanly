@@ -27,11 +27,6 @@
         <activity
             android:name=".ZonaActivity.ZonasActivity"
             android:exported="false" />
-        <activity
-            android:name=".ProfileScreen"
-            android:exported="true" />
-
-        <activity android:name=".WelcomeActivity.GroupManagementActivity" />
 
         <activity
             android:name=".MainActivity"
