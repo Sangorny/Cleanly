@@ -8,46 +8,63 @@ import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import com.google.firebase.firestore.FirebaseFirestore
+import java.util.Calendar
+import java.util.concurrent.TimeUnit
 
 class TaskSyncWorker(context: Context, params: WorkerParameters) : Worker(context, params) {
+
     override fun doWork(): Result {
         val db = FirebaseFirestore.getInstance()
 
         db.collection("MisTareas")
             .get()
             .addOnSuccessListener { result ->
-                val now = System.currentTimeMillis()
+                val now = Calendar.getInstance()
+                val currentHour = now.get(Calendar.HOUR_OF_DAY)
 
                 for (document in result) {
                     val nombreTarea = document.getString("nombre") ?: "Tarea sin nombre"
                     val prioridad = document.getString("prioridad") ?: "Baja"
                     val ultimaNotificacion = document.getTimestamp("ultimaNotificacion")?.toDate()?.time
 
-                    // Determina el intervalo en milisegundos según la prioridad
-                    val intervalo = when (prioridad) {
-                        "Urgente" -> 60 * 60 * 1000 // 1 hora
-                        "Normal" -> 2 * 60 * 60 * 1000 // 2 horas
-                        "Baja" -> 4 * 60 * 60 * 1000 // 4 horas
-                        else -> 0
-                    }
-
-                    // Si no tiene ultimaNotificacion o ya pasó el intervalo, enviar notificación
-                    if (ultimaNotificacion == null || now - ultimaNotificacion >= intervalo) {
-                        enviarNotificacion(nombreTarea, prioridad)
-
-                        // Actualiza la última notificación en Firebase
-                        document.reference.update("ultimaNotificacion", com.google.firebase.Timestamp.now())
+                    // Lógica para priorizar las notificaciones
+                    when (prioridad) {
+                        "Urgente" -> {
+                            if (currentHour in 17..23 && shouldSendNotification(ultimaNotificacion, 60 * 60 * 1000)) {
+                                enviarNotificacion(nombreTarea, prioridad)
+                                document.reference.update("ultimaNotificacion", com.google.firebase.Timestamp.now())
+                            }
+                        }
+                        "Normal" -> {
+                            if (currentHour in listOf(18, 20, 22) && shouldSendNotification(ultimaNotificacion, 2 * 60 * 60 * 1000)) {
+                                enviarNotificacion(nombreTarea, prioridad)
+                                document.reference.update("ultimaNotificacion", com.google.firebase.Timestamp.now())
+                            }
+                        }
+                        "Baja" -> {
+                            // No hacer nada para prioridad Baja
+                        }
                     }
                 }
+
+                // Programar el siguiente Worker
+                programarProximoWorker(applicationContext)
             }
             .addOnFailureListener { exception ->
                 Log.e("TaskSyncWorker", "Error al sincronizar: ${exception.message}")
             }
 
         return Result.success()
+    }
+
+    private fun shouldSendNotification(ultimaNotificacion: Long?, intervalo: Long): Boolean {
+        val now = System.currentTimeMillis()
+        return ultimaNotificacion == null || now - ultimaNotificacion >= intervalo
     }
 
     private fun enviarNotificacion(nombreTarea: String, prioridad: String) {
@@ -66,5 +83,22 @@ class TaskSyncWorker(context: Context, params: WorkerParameters) : Worker(contex
             .build()
 
         NotificationManagerCompat.from(applicationContext).notify(System.currentTimeMillis().toInt(), notification)
+    }
+
+    private fun programarProximoWorker(context: Context) {
+        val now = Calendar.getInstance()
+        now.add(Calendar.HOUR_OF_DAY, 1)
+        now.set(Calendar.MINUTE, 0)
+        now.set(Calendar.SECOND, 0)
+        now.set(Calendar.MILLISECOND, 0)
+
+        val delayMillis = now.timeInMillis - System.currentTimeMillis()
+
+        val workRequest = OneTimeWorkRequestBuilder<TaskSyncWorker>()
+            .setInitialDelay(delayMillis, TimeUnit.MILLISECONDS)
+            .build()
+
+        WorkManager.getInstance(context).enqueue(workRequest)
+        Log.d("TaskSyncWorker", "Siguiente notificación programada en ${delayMillis / 1000 / 60} minutos.")
     }
 }

@@ -1,130 +1,56 @@
 package com.cleanly.WelcomeActivity
 
-import android.net.Uri
-import android.os.Bundle
-import android.util.Log
+import android.content.Context
 import android.widget.Toast
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlin.random.Random
 
-class GroupManagementActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContent {
-            // Inicializamos el NavController
-            val navController = rememberNavController()
+data class Group(
+    val name: String = "",
+    val id: String = "",
+    val members: List<String> = emptyList(),
+    val creator: String = "",
+    val points: Map<String, Int> = emptyMap()
+)
 
-            // Aquí configuramos el NavHost con las pantallas
-            NavHost(navController = navController, startDestination = "group_management") {
-                composable("group_management") {
-                    GroupManagementScreen(navController = navController)
-                }
-                composable("profile") {
-                    ProfileScreen(
-                        navController = navController,
-                        onProfileUpdated = { updatedName, updatedPhoto ->
-                            // Aquí puedes manejar la lógica cuando el perfil se actualiza
-                            handleProfileUpdated(updatedName, updatedPhoto)
-                        }
-                    )
-                }
-            }
-        }
-    }
-
-    private fun handleProfileUpdated(updatedName: String, updatedPhoto: Uri?) {
-        // Lógica para manejar los cambios en el perfil
-        // Por ejemplo: puedes actualizar un estado compartido o informar al backend
-        println("Perfil actualizado: $updatedName con foto $updatedPhoto")
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GroupManagementScreen(navController: NavHostController) {
+fun GroupManagementScreen(context: Context, userId: String) {
     val firestore = FirebaseFirestore.getInstance()
-    val groupCollection = firestore.collection("grupos")
 
-    val auth = FirebaseAuth.getInstance()
-    val currentUser = auth.currentUser
-    val userId = currentUser?.uid ?: ""
+    var groups by remember { mutableStateOf<List<Group>>(emptyList()) }
+    var currentGroup by remember { mutableStateOf<Group?>(null) }
+    var showCreateDialog by remember { mutableStateOf(false) }
+    var showJoinDialog by remember { mutableStateOf(false) }
+    var showEditDialog by remember { mutableStateOf(false) }
+    var showClassificationDialog by remember { mutableStateOf(false) }
 
-    var groupName by remember { mutableStateOf("") }
-    var currentGroupName by remember { mutableStateOf("") }
-    var isUserInGroup by remember { mutableStateOf(false) }
-    var groupMembers by remember { mutableStateOf<List<String>>(emptyList()) }
-    var groupMemberNames by remember { mutableStateOf<List<String>>(emptyList()) }
-    var userPoints by remember { mutableStateOf(0) }
-    var availableGroups by remember { mutableStateOf<List<String>>(emptyList()) }
-    var showJoinGroupDialog by remember { mutableStateOf(false) }
-    var showCreateGroupDialog by remember { mutableStateOf(false) }
-    var showMembersDialog by remember { mutableStateOf(false) }
-
-    val context = LocalContext.current
-
-    // Cargar grupos disponibles
     LaunchedEffect(Unit) {
-        groupCollection.get().addOnSuccessListener { snapshot ->
-            availableGroups = snapshot.map { it.id }
-        }
-    }
-
-// Verificar si el usuario está dentro de un grupo y obtener los miembros
-    LaunchedEffect(userId) {
-        groupCollection.get().addOnSuccessListener { snapshot ->
-            snapshot.documents.forEach { document ->
-                val members = document.get("Miembros") as? List<String> ?: emptyList()
-                if (members.contains(userId)) {
-                    currentGroupName = document.id // Establecer el nombre del grupo al que pertenece
-                    isUserInGroup = true
-                    userPoints = document.get("puntos_de_usuario") as? Int ?: 0
-                    groupMembers = members
-
-                    // Recuperar los nombres de los miembros desde Firestore
-                    val memberNames = mutableListOf<String>()
-                    val usersCollection = FirebaseFirestore.getInstance().collection("usuarios")
-
-                    members.forEach { memberId ->
-                        usersCollection.document(memberId).get().addOnSuccessListener { userDoc ->
-                            val name = userDoc.getString("nombre") ?: "Desconocido"
-
-                            // Log de depuración
-                            Log.d("Firestore", "Miembro: $memberId - Nombre: $name")
-
-                            memberNames.add(name)
-
-                            // Cuando todos los miembros hayan sido procesados, actualizamos el estado
-                            if (memberNames.size == members.size) {
-                                groupMemberNames = memberNames
-                            }
-                        }.addOnFailureListener { exception ->
-                            // Log de error en caso de fallo
-                            Log.e("Firestore", "Error al obtener el nombre del miembro: $memberId", exception)
-                        }
-                    }
+        firestore.collection("grupos").addSnapshotListener { snapshot, error ->
+            if (error == null && snapshot != null) {
+                groups = snapshot.documents.mapNotNull { doc ->
+                    doc.toObject(Group::class.java)
+                }
+                currentGroup = groups.find { group ->
+                    group.members.contains(userId)
                 }
             }
-        }.addOnFailureListener { exception ->
-            // Log de error en caso de fallo al obtener el grupo
-            Log.e("Firestore", "Error al obtener los datos del grupo", exception)
         }
     }
 
@@ -150,210 +76,409 @@ fun GroupManagementScreen(navController: NavHostController) {
                         .padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("Grupo: $currentGroupName", fontSize = 24.sp, modifier = Modifier.padding(8.dp))
+                    Text("Gestión de Grupos", fontSize = 24.sp, color = Color.White, fontWeight = FontWeight.Bold)
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    if (isUserInGroup) {
-                        Text("Puntos: $userPoints", fontSize = 18.sp)
-                    }
+                    currentGroup?.let {
+                        Text("Grupo actual: ${it.name}", fontSize = 20.sp, color = Color.White)
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                    Spacer(modifier = Modifier.height(32.dp))
-
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
                         Button(
-                            onClick = { showMembersDialog = true },
-                            modifier = Modifier.fillMaxWidth()
+                            onClick = { showClassificationDialog = true },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0D47A1)),
+                            shape = RoundedCornerShape(16.dp)
                         ) {
-                            Text("Ver miembros")
+                            Text("Ver Clasificación", color = Color.White, fontWeight = FontWeight.Bold)
                         }
 
-                        Button(
-                            onClick = { leaveGroup(context, userId, currentGroupName, { currentGroupName = "" }, { isUserInGroup = false }) },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Dejar el grupo")
-                        }
+                        Spacer(modifier = Modifier.height(16.dp))
 
                         Button(
-                            onClick = { showCreateGroupDialog = true },
-                            modifier = Modifier.fillMaxWidth()
+                            onClick = {
+                                currentGroup?.let { group ->
+                                    leaveGroup(context, userId, group.id)
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF5252)),
+                            shape = RoundedCornerShape(16.dp)
                         ) {
-                            Text("Crear un grupo")
+                            Text("Salir del Grupo", color = Color.White, fontWeight = FontWeight.Bold)
                         }
 
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        if (it.creator == userId) {
+                            Button(
+                                onClick = { showEditDialog = true },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFAB00)),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Text("Modificar Grupo", color = Color.White, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    } ?: run {
                         Button(
-                            onClick = { showJoinGroupDialog = true },
-                            modifier = Modifier.fillMaxWidth()
+                            onClick = { showCreateDialog = true },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00C853)),
+                            shape = RoundedCornerShape(16.dp)
                         ) {
-                            Text("Unirse a un grupo")
+                            Text("Crear Grupo", color = Color.White, fontWeight = FontWeight.Bold)
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Button(
+                            onClick = { showJoinDialog = true },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00C853)),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Text("Unirse a Grupo", color = Color.White, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
             }
 
-            // Mostrar el diálogo para unirse a un grupo
-            if (showJoinGroupDialog) {
-                AlertDialog(
-                    onDismissRequest = { showJoinGroupDialog = false },
-                    title = { Text("Selecciona un grupo") },
-                    text = {
-                        Column {
-                            availableGroups.forEach { group ->
-                                Button(
-                                    onClick = {
-                                        joinGroup(context, userId, group, { currentGroupName = group }, { isUserInGroup = true })
-                                        showJoinGroupDialog = false
-                                    },
-                                    modifier = Modifier.fillMaxWidth().padding(8.dp)
-                                ) {
-                                    Text("Unirse a $group")
-                                }
-                            }
-                        }
-                    },
-                    confirmButton = {
-                        Button(
-                            onClick = { showJoinGroupDialog = false }
-                        ) {
-                            Text("Cancelar")
-                        }
+            if (showCreateDialog) {
+                CreateGroupDialog(
+                    onDismiss = { showCreateDialog = false },
+                    onCreate = { name ->
+                        createGroup(context, name, userId)
+                        showCreateDialog = false
                     }
                 )
             }
 
-            // Mostrar el diálogo para crear un nuevo grupo
-            if (showCreateGroupDialog) {
-                AlertDialog(
-                    onDismissRequest = { showCreateGroupDialog = false },
-                    title = { Text("Crear un nuevo grupo") },
-                    text = {
-                        Column {
-                            TextField(
-                                value = groupName,
-                                onValueChange = { groupName = it },
-                                label = { Text("Nombre del grupo") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    },
-                    confirmButton = {
-                        Button(
-                            onClick = {
-                                if (groupName.isNotBlank()) {
-                                    createGroup(context, groupName, userId)
-                                    showCreateGroupDialog = false
-                                    groupName = ""
-                                } else {
-                                    Toast.makeText(context, "Por favor ingresa el nombre del grupo", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        ) {
-                            Text("Crear")
-                        }
-                    },
-                    dismissButton = {
-                        Button(onClick = { showCreateGroupDialog = false }) {
-                            Text("Cancelar")
-                        }
+            if (showJoinDialog) {
+                JoinGroupDialog(
+                    groups = groups,
+                    onDismiss = { showJoinDialog = false },
+                    onJoin = { id ->
+                        joinGroup(context, id, userId)
+                        showJoinDialog = false
                     }
                 )
             }
 
-            // Mostrar el diálogo para mostrar los miembros del grupo
-            if (showMembersDialog) {
-                AlertDialog(
-                    onDismissRequest = { showMembersDialog = false },
-                    title = { Text("Miembros del grupo") },
-                    text = {
-                        Column {
-                            groupMemberNames.forEach { member ->
-                                Text("Miembro: $member")  // Mostrar el nombre de cada miembro
-                            }
-                        }
+            if (showEditDialog && currentGroup != null) {
+                EditGroupDialog(
+                    group = currentGroup!!,
+                    onDismiss = { showEditDialog = false },
+                    onEdit = { name ->
+                        editGroup(context, currentGroup!!.name, name)
+                        showEditDialog = false
                     },
-                    confirmButton = {
-                        Button(
-                            onClick = { showMembersDialog = false }
-                        ) {
-                            Text("Cerrar")
-                        }
+                    onRemoveMember = { member ->
+                        removeMember(context, currentGroup!!.name, member)
                     }
+                )
+            }
+
+            if (showClassificationDialog && currentGroup != null) {
+                ClassificationDialog(
+                    group = currentGroup!!,
+                    onDismiss = { showClassificationDialog = false }
                 )
             }
         }
     )
 }
 
-fun leaveGroup(
-    context: android.content.Context,
-    userId: String,
-    currentGroupName: String,
-    updateGroupName: (String) -> Unit,
-    updateIsUserInGroup: (Boolean) -> Unit
-) {
-    val firestore = FirebaseFirestore.getInstance()
-    val groupCollection = firestore.collection("grupos")
+@Composable
+fun CreateGroupDialog(onDismiss: () -> Unit, onCreate: (String) -> Unit) {
+    var name by remember { mutableStateOf("") }
 
-    val groupRef = groupCollection.document(currentGroupName)
-    groupRef.update("Miembros", FieldValue.arrayRemove(userId))
-        .addOnSuccessListener {
-            Toast.makeText(context, "Has dejado el grupo", Toast.LENGTH_SHORT).show()
-            updateGroupName("") // Vaciar el nombre del grupo
-            updateIsUserInGroup(false) // El usuario ya no está en el grupo
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Crear Grupo") },
+        text = {
+            Column {
+                TextField(value = name, onValueChange = { name = it }, label = { Text("Nombre del Grupo") })
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onCreate(name) }) {
+                Text("Crear")
+            }
+        },
+        dismissButton = {
+            Button(onClick = onDismiss) {
+                Text("Cancelar")
+            }
         }
-        .addOnFailureListener { e ->
-            Toast.makeText(context, "Error al salir del grupo: ${e.message}", Toast.LENGTH_SHORT).show()
+    )
+}
+
+
+@Composable
+fun JoinGroupDialog(groups: List<Group>, onDismiss: () -> Unit, onJoin: (String) -> Unit) {
+    var selectedGroup by remember { mutableStateOf<Group?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Unirse a Grupo") },
+        text = {
+            Column {
+                LazyColumn {
+                    items(groups) { group ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().clickable { selectedGroup = group },
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(group.name)
+                            if (selectedGroup == group) Text("Seleccionado", color = Color.Green)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                selectedGroup?.let { onJoin(it.id) }
+            }) {
+                Text("Unirse")
+            }
+        },
+        dismissButton = {
+            Button(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
+}
+
+
+fun createGroup(context: Context, name: String, userId: String) {
+    val firestore = FirebaseFirestore.getInstance()
+    val uniqueId = generateUniqueId()
+
+    val group = Group(name = name, id = uniqueId, members = listOf(userId), creator = userId, points = mapOf(userId to 0))
+
+    firestore.collection("grupos").document(uniqueId).set(group)
+        .addOnSuccessListener {
+            Toast.makeText(context, "Grupo creado con éxito. ID: $uniqueId", Toast.LENGTH_SHORT).show()
+        }
+        .addOnFailureListener {
+            Toast.makeText(context, "Error al crear el grupo", Toast.LENGTH_SHORT).show()
         }
 }
 
-fun joinGroup(
-    context: android.content.Context,
-    userId: String,
-    groupName: String,
-    updateGroupName: (String) -> Unit,
-    updateIsUserInGroup: (Boolean) -> Unit
-) {
-    val firestore = FirebaseFirestore.getInstance()
-    val groupCollection = firestore.collection("grupos")
 
-    val groupRef = groupCollection.document(groupName)
-    groupRef.get().addOnSuccessListener { document ->
-        if (document.exists()) {
-            groupRef.update("Miembros", FieldValue.arrayUnion(userId))
+fun joinGroup(context: Context, id: String, userId: String) {
+    val firestore = FirebaseFirestore.getInstance()
+
+    firestore.collection("grupos").document(id).get().addOnSuccessListener { doc ->
+        if (doc.exists()) {
+            firestore.collection("grupos").document(id)
+                .update(
+                    "members", FieldValue.arrayUnion(userId),
+                    "points.$userId", 0
+                )
                 .addOnSuccessListener {
-                    Toast.makeText(context, "Te has unido al grupo $groupName", Toast.LENGTH_SHORT).show()
-                    updateGroupName(groupName)
-                    updateIsUserInGroup(true)
-                }
-                .addOnFailureListener { e ->
-                    Toast.makeText(context, "Error al unirse al grupo: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Te has unido al grupo", Toast.LENGTH_SHORT).show()
                 }
         } else {
-            Toast.makeText(context, "El grupo no existe", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "ID de grupo no válido", Toast.LENGTH_SHORT).show()
         }
     }
 }
 
-fun createGroup(context: android.content.Context, groupName: String, userId: String) {
+fun generateUniqueId(): String {
+    val charset = ('A'..'F') + ('0'..'9')
+    return "#" + List(6) { charset.random() }.joinToString("")
+}
+
+fun editGroup(context: Context, oldName: String, newName: String) {
     val firestore = FirebaseFirestore.getInstance()
-    val groupCollection = firestore.collection("grupos")
 
-    val newGroup = hashMapOf(
-        "nombre" to groupName,
-        "Miembros" to listOf(userId),
-        "puntos_de_usuario" to 0
-    )
+    firestore.collection("grupos").document(oldName).get().addOnSuccessListener { doc ->
+        if (doc.exists()) {
+            firestore.collection("grupos").document(newName)
+                .set(Group(newName, doc.getString("id") ?: "", doc.get("members") as List<String>, doc.getString("creator")!!))
+                .addOnSuccessListener {
+                    firestore.collection("grupos").document(oldName).delete()
+                    Toast.makeText(context, "Grupo actualizado", Toast.LENGTH_SHORT).show()
+                }
+        }
+    }
+}
 
-    groupCollection.document(groupName)
-        .set(newGroup)
+fun removeMember(context: Context, groupName: String, memberId: String) {
+    val firestore = FirebaseFirestore.getInstance()
+
+    firestore.collection("grupos").document(groupName)
+        .update("members", FieldValue.arrayRemove(memberId))
         .addOnSuccessListener {
-            Toast.makeText(context, "Grupo creado con éxito", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Miembro eliminado", Toast.LENGTH_SHORT).show()
         }
-        .addOnFailureListener { e ->
-            Toast.makeText(context, "Error al crear el grupo: ${e.message}", Toast.LENGTH_SHORT).show()
+}
+
+fun leaveGroup(context: Context, userId: String, groupId: String) {
+    val firestore = FirebaseFirestore.getInstance()
+
+    firestore.collection("grupos").document(groupId)
+        .update("members", FieldValue.arrayRemove(userId))
+        .addOnSuccessListener {
+            Toast.makeText(context, "Has salido del grupo", Toast.LENGTH_SHORT).show()
         }
+        .addOnFailureListener {
+            Toast.makeText(context, "Error al salir del grupo: ${it.message}", Toast.LENGTH_SHORT).show()
+        }
+}
+
+@Composable
+fun EditGroupDialog(
+    group: Group,
+    onDismiss: () -> Unit,
+    onEdit: (String) -> Unit,
+    onRemoveMember: (String) -> Unit
+) {
+    val firestore = FirebaseFirestore.getInstance()
+    var name by remember { mutableStateOf(group.name) }
+    var memberNames by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+
+    // Cargar nombres de los miembros
+    LaunchedEffect(group.members) {
+        val usersCollection = firestore.collection("usuarios")
+        val tempMemberNames = mutableMapOf<String, String>()
+
+        group.members.forEach { memberId ->
+            usersCollection.document(memberId).get().addOnSuccessListener { document ->
+                val userName = document.getString("nombre") ?: memberId
+                tempMemberNames[memberId] = userName
+                if (tempMemberNames.size == group.members.size) {
+                    memberNames = tempMemberNames
+                }
+            }
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Editar Grupo") },
+        text = {
+            Column {
+                TextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Nombre del Grupo") }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Código del Grupo: ${group.id}",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Gray
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Miembros del Grupo:")
+                LazyColumn {
+                    items(group.members) { memberId ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = memberNames[memberId] ?: "Cargando...",
+                                fontSize = 14.sp
+                            )
+                            Button(onClick = { onRemoveMember(memberId) }) {
+                                Text("Eliminar")
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onEdit(name) }) {
+                Text("Guardar")
+            }
+        },
+        dismissButton = {
+            Button(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
+}
+
+
+@Composable
+fun ClassificationDialog(group: Group, onDismiss: () -> Unit) {
+    val firestore = FirebaseFirestore.getInstance()
+    var memberNames by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+
+    // Cargar los nombres de los usuarios
+    LaunchedEffect(group.members) {
+        val usersCollection = firestore.collection("usuarios")
+        val tempMemberNames = mutableMapOf<String, String>()
+
+        group.members.forEach { memberId ->
+            usersCollection.document(memberId).get().addOnSuccessListener { document ->
+                val userName = document.getString("nombre") ?: memberId
+                tempMemberNames[memberId] = userName
+                if (tempMemberNames.size == group.members.size) {
+                    memberNames = tempMemberNames
+                }
+            }
+        }
+    }
+
+    // Ordenar la clasificación
+    val sortedPoints = group.points.toList().sortedByDescending { it.second }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Clasificación del Grupo") },
+        text = {
+            Column {
+                if (memberNames.isEmpty()) {
+                    // Mostrar indicador de carga mientras se obtienen los nombres
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                } else {
+                    LazyColumn {
+                        items(sortedPoints) { (memberId, points) ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = memberNames[memberId] ?: "Cargando...",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "$points puntos",
+                                    fontSize = 16.sp,
+                                    color = Color.Gray
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) {
+                Text("Cerrar")
+            }
+        }
+    )
 }

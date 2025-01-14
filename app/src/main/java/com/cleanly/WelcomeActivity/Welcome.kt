@@ -416,8 +416,12 @@ fun MainScreen(
                 }
             }
             composable("group_management") {
-                GroupManagementScreen(navController = navController)
+                val context = LocalContext.current
+                val auth = FirebaseAuth.getInstance()
+                val userId = auth.currentUser?.uid ?: ""
+                GroupManagementScreen(context = context, userId = userId)
             }
+
             composable("profile") {
                 ProfileScreen(
                     navController = navController,
@@ -441,6 +445,3 @@ fun MainScreen(
         }
     }
 }
-
-
-

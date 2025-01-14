@@ -2,11 +2,13 @@ package com.cleanly
 
 import MisTareasScreen
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.cleanly.WelcomeActivity.GroupManagementScreen
 import com.cleanly.WelcomeActivity.ProfileScreen
+import com.google.firebase.auth.FirebaseAuth
 
 
 @Composable
@@ -46,7 +48,9 @@ fun AppNavigation() {
                 onTareaClick = { tarea ->
                     // Lógica para manejar el clic en una tarea
                     navController.navigate("mis_tareas") {
-                        popUpTo("welcome") { inclusive = false } // Navegar sin eliminar "welcome" de la pila
+                        popUpTo("welcome") {
+                            inclusive = false
+                        } // Navegar sin eliminar "welcome" de la pila
                         launchSingleTop = true // Evitar duplicados
                     }
                 }
@@ -70,7 +74,10 @@ fun AppNavigation() {
 
         // Pantalla de gestión de grupos
         composable("group_management") {
-            GroupManagementScreen(navController)
+            val context = LocalContext.current
+            val auth = FirebaseAuth.getInstance()
+            val userId = auth.currentUser?.uid ?: ""
+            GroupManagementScreen(context = context, userId = userId)
         }
     }
 }
