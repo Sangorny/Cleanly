@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -26,19 +27,18 @@ data class Group(
 @Composable
 fun GroupManagementScreen(
     navController: NavHostController,
-    context: Context,
     userId: String,
-    grupoId: String // Recibimos el grupoId como parámetro
+    groupId: String // Recibimos el grupoId como parámetro
 ) {
     val firestore = FirebaseFirestore.getInstance()
-
     var currentGroup by remember { mutableStateOf<Group?>(null) }
     var groupMembers by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var isLoading by remember { mutableStateOf(true) }
+    val context = LocalContext.current // Captura aquí el contexto
 
     // Obtener la información del grupo usando el grupoId recibido
-    LaunchedEffect(grupoId) {
-        firestore.collection("grupos").document(grupoId).get()
+    LaunchedEffect(groupId) {
+        firestore.collection("grupos").document(groupId).get()
             .addOnSuccessListener { groupDoc ->
                 currentGroup = groupDoc.toObject(Group::class.java)
 
@@ -98,12 +98,10 @@ fun GroupManagementScreen(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Botón para dejar el grupo
                         Button(
                             onClick = {
-                                // Acción para dejar el grupo
-                                leaveGroup(context, userId, it.id) {
-                                    navController.navigate("group_screen/$userId") // Redirigir a la pantalla de creación/unión de grupo
+                                leaveGroup(context, userId, currentGroup?.id ?: "") {
+                                    navController.navigate("group_screen/$userId")
                                 }
                             },
                             modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -145,7 +143,6 @@ fun GroupManagementScreen(
     )
 }
 
-// Función para eliminar al usuario del grupo
 fun leaveGroup(context: Context, userId: String, groupId: String, onComplete: () -> Unit) {
     val firestore = FirebaseFirestore.getInstance()
 

@@ -103,13 +103,12 @@ fun AppNavigation() {
         }
 
         composable("group_management/{grupoId}") { backStackEntry ->
-            val grupoIdArg = backStackEntry.arguments?.getString("grupoId") ?: ""
+            val grupoIdArg = backStackEntry.arguments?.getString("groupId") ?: ""
             val userId = backStackEntry.arguments?.getString("userId") ?: ""
             GroupManagementScreen(
                 navController = navController,
-                context = LocalContext.current,
                 userId = userId,
-                grupoId = grupoIdArg
+                groupId = grupoIdArg
             )
         }
 
