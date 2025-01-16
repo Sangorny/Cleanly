@@ -28,6 +28,7 @@
             android:name=".ZonaActivity.ZonasActivity"
             android:exported="false" />
 
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

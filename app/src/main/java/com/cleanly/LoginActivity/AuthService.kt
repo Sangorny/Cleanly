@@ -1,8 +1,6 @@
 package com.cleanly
 
 import android.content.Context
-import android.content.Intent
-import android.util.Log
 import android.widget.Toast
 import androidx.navigation.NavHostController
 import com.google.firebase.auth.FirebaseAuth
@@ -50,9 +48,10 @@ fun createAccount(email: String, password: String, nick: String, context: Contex
                                 rol = "pendiente",
                                 context = context
                             )
-                            // Redirigir a GroupManagementScreen
-                            navController.navigate("group_management") {
-                                popUpTo("register") { inclusive = true }
+                            // Redirigir a la pantalla de crear o unirse a un grupo (GroupScreen)
+                            navController.navigate("group_screen/$uid") {
+                                popUpTo("register") { inclusive = true }  // Elimina la pantalla de registro de la pila
+                                launchSingleTop = true // Evitar duplicados
                             }
                         }
                     }
