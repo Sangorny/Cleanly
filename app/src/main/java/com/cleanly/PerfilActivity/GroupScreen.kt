@@ -3,6 +3,7 @@ package com.cleanly.PerfilActivity
 
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.cleanly.MainActivity
+import com.cleanly.WelcomActivity
 import com.cleanly.WelcomeActivity.WelcomeDownBar
 import com.cleanly.WelcomeActivity.WelcomeTopBar
 import com.google.firebase.auth.FirebaseAuth
@@ -29,47 +31,46 @@ import com.google.firebase.firestore.FirebaseFirestore
 fun GroupScreen(
     navController: NavHostController,
     userId: String,
-    showTopBarAndBottomBar: Boolean // Recibimos el parámetro para controlar la visibilidad de las barras
+    showTopBarAndBottomBar: Boolean
 ) {
     val context = LocalContext.current
-    var groupName by remember { mutableStateOf("") }  // Para la creación de un nuevo grupo
-    var groupCode by remember { mutableStateOf("") }  // Para unirse a un grupo existente
+    var groupName by remember { mutableStateOf("") }
+    var groupCode by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-
-    // Estado de carga
     var isLoading by remember { mutableStateOf(false) }
 
-    // Crear un nuevo grupo
+    // Validación de campos vacíos
+    fun validateInput(input: String, fieldName: String): Boolean {
+        return if (input.isBlank()) {
+            errorMessage = "$fieldName no puede estar vacío."
+            false
+        } else {
+            errorMessage = null
+            true
+        }
+    }
+
     fun handleCreateGroup() {
-        if (groupName.isNotBlank()) {
+        if (validateInput(groupName, "Nombre del Grupo")) {
             isLoading = true
             createGroup(context, groupName, userId) {
                 isLoading = false
                 Toast.makeText(context, "Grupo creado con éxito", Toast.LENGTH_SHORT).show()
-                navController.navigate("welcome") {
-                    popUpTo("group_screen/$userId") { inclusive = true } // Limpiar la pila de navegación
-                    launchSingleTop = true
-                }
+                val intent = Intent(context, WelcomActivity::class.java)
+                context.startActivity(intent)
             }
-        } else {
-            errorMessage = "El nombre del grupo no puede estar vacío."
         }
     }
 
-    // Unirse a un grupo
     fun handleJoinGroup() {
-        if (groupCode.isNotBlank()) {
+        if (validateInput(groupCode, "Código del Grupo")) {
             isLoading = true
             joinGroup(context, groupCode, userId) {
                 isLoading = false
                 Toast.makeText(context, "Te has unido al grupo", Toast.LENGTH_SHORT).show()
-                navController.navigate("welcome") {
-                    popUpTo("group_screen/$userId") { inclusive = true } // Limpiar la pila de navegación
-                    launchSingleTop = true
-                }
+                val intent = Intent(context, WelcomActivity::class.java)
+                context.startActivity(intent)
             }
-        } else {
-            errorMessage = "El código del grupo no puede estar vacío."
         }
     }
 
@@ -77,8 +78,8 @@ fun GroupScreen(
         topBar = {
             if (showTopBarAndBottomBar) {
                 WelcomeTopBar(
-                    photoUrl = null, // Puedes configurarlo según sea necesario
-                    displayName = "Crear/Unirse a un Grupo", // O el nombre que desees mostrar
+                    photoUrl = null,
+                    displayName = "Crear/Unirse a un Grupo",
                     onProfileClick = { /* Acción de perfil */ },
                     onGroupManagementClick = { /* Acción de gestión de grupos */ },
                     onLogoutClick = {
@@ -164,22 +165,7 @@ fun GroupScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Button(
-                        onClick = {
-                            if (groupCode.isNotBlank()) {
-                                isLoading = true
-                                // Unirse al grupo
-                                joinGroup(context, groupCode, userId) {
-                                    isLoading = false
-                                    Toast.makeText(context, "Te has unido al grupo", Toast.LENGTH_SHORT).show()
-                                    navController.navigate("main") {
-                                        popUpTo("group_screen/$userId") { inclusive = true } // Limpia la pila
-                                        launchSingleTop = true // Evita duplicados
-                                    }
-                                }
-                            } else {
-                                errorMessage = "El código del grupo no puede estar vacío."
-                            }
-                        },
+                        onClick = { handleJoinGroup() },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
@@ -199,99 +185,115 @@ fun GroupScreen(
 }
 
 
+const val GROUPS_COLLECTION = "grupos"
+const val USERS_SUBCOLLECTION = "usuarios"
+const val SINGLE_GROUP = "singrupo"
+
+// Función para manejar errores de forma centralizada
+fun handleFirestoreError(context: Context, tag: String, message: String?, exception: Exception?) {
+    val errorMsg = message ?: "Error desconocido"
+    Log.e(tag, errorMsg, exception)
+    Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show()
+}
+
+// Crear un grupo
 fun createGroup(context: Context, name: String, userId: String, onSuccess: () -> Unit) {
     val firestore = FirebaseFirestore.getInstance()
-    val uniqueId = generateUniqueId()  // Genera un ID único para el grupo
+    val uniqueId = generateUniqueId() // Genera un ID único para el grupo
 
-    val group = Group(name = name, id = uniqueId, members = listOf(userId), creator = userId, points = mapOf(userId to 0))
+    val group = Group(
+        name = name,
+        id = uniqueId,
+        members = listOf(userId),
+        creator = userId,
+        points = mapOf(userId to 0)
+    )
 
-    firestore.collection("grupos").document(uniqueId).set(group)
+    firestore.collection(GROUPS_COLLECTION).document(uniqueId).set(group)
         .addOnSuccessListener {
+            Log.d("createGroup", "Grupo creado con éxito: $uniqueId")
             onSuccess()
         }
-        .addOnFailureListener {
-            Toast.makeText(context, "Error al crear el grupo", Toast.LENGTH_SHORT).show()
+        .addOnFailureListener { exception ->
+            handleFirestoreError(context, "createGroup", "Error al crear el grupo", exception)
         }
 }
 
+// Unirse a un grupo
 fun joinGroup(context: Context, groupCode: String, userId: String, onSuccess: () -> Unit) {
     val firestore = FirebaseFirestore.getInstance()
 
-    // Primero, buscamos el grupo con el código
-    firestore.collection("grupos")
-        .whereEqualTo("id", groupCode) // Buscamos el grupo con el código
+    firestore.collection(GROUPS_COLLECTION)
+        .whereEqualTo("id", groupCode)
         .get()
         .addOnSuccessListener { querySnapshot ->
             if (querySnapshot.isEmpty) {
-                // Si no encontramos el grupo con ese código
-                Toast.makeText(context, "Código de grupo no válido.", Toast.LENGTH_SHORT).show()
-            } else {
-                // Obtenemos el primer grupo que coincide con el código
-                val groupDoc = querySnapshot.documents.first()
-                val groupId = groupDoc.id // ID del grupo
-
-                // Ahora obtenemos el usuario desde el grupo "singrupo"
-                firestore.collection("grupos").document("singrupo")
-                    .collection("usuarios").document(userId)
-                    .get()
-                    .addOnSuccessListener { userSnapshot ->
-                        if (userSnapshot.exists()) {
-                            // Tomamos los datos del usuario
-                            val user = userSnapshot.data
-                            val userName = user?.get("nombre") ?: "Desconocido"
-                            val userRole = user?.get("rol") ?: "pendiente"
-
-                            // Ahora que tenemos el usuario, lo agregamos al grupo correspondiente
-                            val userRef = firestore.collection("grupos").document(groupId)
-                                .collection("usuarios").document(userId)
-
-                            // Añadimos el usuario a la subcolección 'usuarios' del grupo y actualizamos la lista de miembros
-                            userRef.set(
-                                hashMapOf(
-                                    "uid" to userId,
-                                    "nombre" to userName,
-                                    "rol" to userRole
-                                )
-                            ).addOnSuccessListener {
-                                // Actualizamos la lista de miembros en el grupo
-                                firestore.collection("grupos").document(groupId)
-                                    .update(
-                                        "members", FieldValue.arrayUnion(userId), // Agregamos el UID a la lista de miembros
-                                        "points.$userId", 0 // Inicializamos los puntos del nuevo miembro
-                                    ).addOnSuccessListener {
-                                        // Eliminar el usuario de la subcolección de 'singrupo'
-                                        firestore.collection("grupos").document("singrupo")
-                                            .collection("usuarios").document(userId)
-                                            .delete()
-                                            .addOnSuccessListener {
-                                                // Llamamos al callback de éxito después de eliminar
-                                                onSuccess()
-                                            }
-                                            .addOnFailureListener { exception ->
-                                                Toast.makeText(context, "Error al eliminar usuario de 'singrupo': ${exception.message}", Toast.LENGTH_SHORT).show()
-                                            }
-                                    }
-                                    .addOnFailureListener { exception ->
-                                        Toast.makeText(context, "Error al actualizar grupo: ${exception.message}", Toast.LENGTH_SHORT).show()
-                                    }
-                            }
-                        } else {
-                            // Si el usuario no existe en "singrupo"
-                            Toast.makeText(context, "No se encontró al usuario en 'singrupo'.", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                    .addOnFailureListener { exception ->
-                        Toast.makeText(context, "Error al obtener datos del usuario: ${exception.message}", Toast.LENGTH_SHORT).show()
-                    }
+                handleFirestoreError(context, "joinGroup", "Código de grupo no válido", null)
+                return@addOnSuccessListener
             }
+
+            val groupDoc = querySnapshot.documents.first()
+            val groupId = groupDoc.id
+
+            // Mueve al usuario de 'singrupo' al grupo objetivo
+            moveUserToGroup(context, firestore, groupId, userId, onSuccess)
         }
         .addOnFailureListener { exception ->
-            Toast.makeText(context, "Error al verificar el código: ${exception.message}", Toast.LENGTH_SHORT).show()
+            handleFirestoreError(context, "joinGroup", "Error al verificar el grupo", exception)
         }
 }
 
+// Función para mover al usuario de un grupo a otro
+fun moveUserToGroup(
+    context: Context,
+    firestore: FirebaseFirestore,
+    groupId: String,
+    userId: String,
+    onSuccess: () -> Unit
+) {
+    firestore.collection(GROUPS_COLLECTION).document(SINGLE_GROUP)
+        .collection(USERS_SUBCOLLECTION).document(userId)
+        .get()
+        .addOnSuccessListener { userSnapshot ->
+            if (userSnapshot.exists()) {
+                // Copia los datos existentes del usuario
+                val userData = userSnapshot.data?.toMutableMap() ?: mutableMapOf()
+
+                // Actualiza el campo "rol" a "gestor"
+                userData["rol"] = "gestor"
+
+                // Añade el usuario al grupo objetivo
+                firestore.collection(GROUPS_COLLECTION).document(groupId)
+                    .collection(USERS_SUBCOLLECTION).document(userId)
+                    .set(userData)
+                    .addOnSuccessListener {
+                        // Elimina al usuario de 'singrupo'
+                        firestore.collection(GROUPS_COLLECTION).document(SINGLE_GROUP)
+                            .collection(USERS_SUBCOLLECTION).document(userId)
+                            .delete()
+                            .addOnSuccessListener {
+                                Log.d("moveUserToGroup", "Usuario movido correctamente al grupo $groupId con rol 'gestor'")
+                                onSuccess()
+                            }
+                            .addOnFailureListener { exception ->
+                                handleFirestoreError(context, "moveUserToGroup", "Error al eliminar usuario de 'singrupo'", exception)
+                            }
+                    }
+                    .addOnFailureListener { exception ->
+                        handleFirestoreError(context, "moveUserToGroup", "Error al agregar usuario al grupo", exception)
+                    }
+            } else {
+                handleFirestoreError(context, "moveUserToGroup", "No se encontró al usuario en 'singrupo'", null)
+            }
+        }
+        .addOnFailureListener { exception ->
+            handleFirestoreError(context, "moveUserToGroup", "Error al obtener datos del usuario", exception)
+        }
+}
+
+// Generar un ID único
 fun generateUniqueId(): String {
-    val charset = ('A'..'F') + ('0'..'9')  // Usamos los caracteres hexadecimales
-    return "#" + List(6) { charset.random() }.joinToString("")  // Genera un ID de 6 caracteres
+    val charset = ('A'..'F') + ('0'..'9') // Usamos caracteres hexadecimales
+    return "#" + List(6) { charset.random() }.joinToString("")
 }
 

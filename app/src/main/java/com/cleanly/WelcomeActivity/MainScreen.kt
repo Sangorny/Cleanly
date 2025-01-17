@@ -121,16 +121,15 @@ fun MainScreen(
     // Lógica de navegación
     LaunchedEffect(grupoIdLoaded, navigationTriggered) {
         if (grupoIdLoaded && !navigationTriggered) {
+            navigationTriggered = true
             if (groupId == null) {
                 Log.d("Navigation", "Redirigiendo a group_screen porque groupId es null")
-                if (currentUser != null) {
-                    navController.navigate("group_screen/${currentUser.uid}") {
+                currentUser?.let {
+                    navController.navigate("group_screen/${it.uid}") {
                         popUpTo("main_screen") { inclusive = true }
                         launchSingleTop = true
                     }
-                } else {
-                    Log.e("Navigation", "Usuario no autenticado. No se puede redirigir.")
-                }
+                } ?: Log.e("Navigation", "Usuario no autenticado. No se puede redirigir.")
             } else {
                 Log.d("Navigation", "Redirigiendo a welcome con groupId: $groupId")
                 navController.navigate("welcome") {
@@ -138,7 +137,8 @@ fun MainScreen(
                     launchSingleTop = true
                 }
             }
-            navigationTriggered = true
+        } else if (navigationTriggered) {
+            Log.d("Navigation", "Navegación ya fue activada. Evitando redirección repetida.")
         }
     }
 

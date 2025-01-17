@@ -1,28 +1,18 @@
 package com.cleanly
 
-import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.LineHeightStyle
-import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.cleanly.TareasActivity.CRUDTareas
 import com.cleanly.TareasActivity.Tarea
 import com.cleanly.TareasActivity.TareasBD
-import com.cleanly.WelcomeActivity.WelcomeDownBar
-import com.cleanly.ZonaActivity.ZonasActivity
 import com.cleanly.ui.theme.CleanlyTheme
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 
 
