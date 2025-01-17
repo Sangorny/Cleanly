@@ -204,8 +204,8 @@ fun MainScreen(
                     GroupScreen(
                         navController = navController,
                         userId = userId,
-                        showTopBarAndBottomBar = false
-                    )
+
+                        )
                 }
 
                 // Ruta hacia GroupManagementScreen

@@ -1,6 +1,8 @@
 package com.cleanly.PerfilActivity
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -19,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.launch
 
 data class Group(
     val name: String = "",
@@ -41,100 +44,111 @@ fun GroupManagementScreen(
     var groupMembers by remember { mutableStateOf<List<String>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var showMembersDialog by remember { mutableStateOf(false) }
+    var isLeavingGroup by remember { mutableStateOf(false) }
 
-    // Fetch group and members data
-    LaunchedEffect(groupId) {
-        firestore.collection("grupos").document(groupId).get()
-            .addOnSuccessListener { groupDoc ->
-                currentGroup = groupDoc.toObject(Group::class.java)
-                fetchGroupMembers(groupId, firestore) { members ->
-                    groupMembers = members
+    if (isLeavingGroup) {
+        LoadingScreen(isLoading = isLeavingGroup) {
+            // No se necesita lógica adicional aquí
+        }
+    } else {
+        LaunchedEffect(groupId) {
+            firestore.collection("grupos").document(groupId).get()
+                .addOnSuccessListener { groupDoc ->
+                    currentGroup = groupDoc.toObject(Group::class.java)
+                    fetchGroupMembers(groupId, firestore) { members ->
+                        groupMembers = members
+                        isLoading = false
+                    }
+                }
+                .addOnFailureListener {
                     isLoading = false
                 }
-            }
-            .addOnFailureListener {
-                isLoading = false
-            }
-    }
+        }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(text = "Gestión de Grupos", color = Color.White) },
-                colors = TopAppBarDefaults.smallTopAppBarColors(containerColor = Color(0xFF0D47A1))
-            )
-        },
-        content = { paddingValues ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(Color(0xFF0D47A1), Color(0xFF00E676))
-                        )
-                    ),
-                contentAlignment = Alignment.TopCenter
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(color = Color.White)
-                } else {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        currentGroup?.let {
-                            Text("Grupo actual: ${it.name}", fontSize = 20.sp, color = Color.White)
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            Button(
-                                onClick = { showMembersDialog = true },
-                                modifier = Modifier.fillMaxWidth().height(56.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF673AB7)),
-                                shape = RoundedCornerShape(16.dp)
-                            ) {
-                                Text("Listar usuarios del grupo", color = Color.White, fontWeight = FontWeight.Bold)
-                            }
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            Button(
-                                onClick = { leaveGroupAndRedirect(userId, groupId, navController, firestore) },
-                                modifier = Modifier.fillMaxWidth().height(56.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF5252)),
-                                shape = RoundedCornerShape(16.dp)
-                            ) {
-                                Text("Dejar el grupo", color = Color.White, fontWeight = FontWeight.Bold)
-                            }
-
-                            if (it.creator == userId) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text(text = "Gestión de Grupos", color = Color.White) },
+                    colors = TopAppBarDefaults.smallTopAppBarColors(containerColor = Color(0xFF0D47A1))
+                )
+            },
+            content = { paddingValues ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(Color(0xFF0D47A1), Color(0xFF00E676))
+                            )
+                        ),
+                    contentAlignment = Alignment.TopCenter
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(color = Color.White)
+                    } else {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            currentGroup?.let {
+                                Text("Grupo actual: ${it.name} (ID: ${it.id})", fontSize = 20.sp, color = Color.White)
                                 Spacer(modifier = Modifier.height(16.dp))
+
                                 Button(
-                                    onClick = { navController.navigate("edit_group/${it.id}") },
+                                    onClick = { showMembersDialog = true },
                                     modifier = Modifier.fillMaxWidth().height(56.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFAB00)),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF673AB7)),
                                     shape = RoundedCornerShape(16.dp)
                                 ) {
-                                    Text("Modificar grupo", color = Color.White, fontWeight = FontWeight.Bold)
+                                    Text("Listar usuarios del grupo", color = Color.White, fontWeight = FontWeight.Bold)
                                 }
-                            }
-                        } ?: run {
-                            Text("No se encontró información del grupo", color = Color.White, fontSize = 16.sp)
-                        }
-                    }
 
-                    if (showMembersDialog) {
-                        MemberListDialog(
-                            members = groupMembers,
-                            onDismiss = { showMembersDialog = false }
-                        )
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                Button(
+                                    onClick = {
+                                        isLeavingGroup = true
+                                        leaveGroupAndRedirectWithLoading(userId, groupId, navController, firestore) {
+                                            isLeavingGroup = false
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF5252)),
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Text("Dejar el grupo", color = Color.White, fontWeight = FontWeight.Bold)
+                                }
+
+                                if (it.creator == userId) {
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Button(
+                                        onClick = { navController.navigate("edit_group/${it.id}") },
+                                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFAB00)),
+                                        shape = RoundedCornerShape(16.dp)
+                                    ) {
+                                        Text("Modificar grupo", color = Color.White, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            } ?: run {
+                                Text("No se encontró información del grupo", color = Color.White, fontSize = 16.sp)
+                            }
+                        }
+
+                        if (showMembersDialog) {
+                            MemberListDialog(
+                                members = groupMembers,
+                                onDismiss = { showMembersDialog = false }
+                            )
+                        }
                     }
                 }
             }
-        }
-    )
+        )
+    }
 }
 
 @Composable
@@ -169,7 +183,14 @@ fun fetchGroupMembers(groupId: String, firestore: FirebaseFirestore, onResult: (
         }
 }
 
-fun leaveGroupAndRedirect(userId: String, groupId: String, navController: NavHostController, firestore: FirebaseFirestore) {
+
+fun leaveGroupAndRedirectWithLoading(
+    userId: String,
+    groupId: String,
+    navController: NavHostController,
+    firestore: FirebaseFirestore,
+    onComplete: () -> Unit
+) {
     val groupRef = firestore.collection("grupos").document(groupId).collection("usuarios").document(userId)
     val noGroupRef = firestore.collection("grupos").document("singrupo").collection("usuarios").document(userId)
 
@@ -177,29 +198,35 @@ fun leaveGroupAndRedirect(userId: String, groupId: String, navController: NavHos
         .addOnSuccessListener { documentSnapshot ->
             if (documentSnapshot.exists()) {
                 val userData = documentSnapshot.data?.toMutableMap() ?: mutableMapOf()
-                userData["rol"] = "pendiente" // Actualiza el rol a "pendiente"
+                userData["rol"] = "pendiente"
 
                 groupRef.delete()
                     .addOnSuccessListener {
                         noGroupRef.set(userData)
                             .addOnSuccessListener {
-                                navController.navigate("group_screen/$userId") {
-                                    popUpTo(0) { inclusive = true }
-                                }
+                                Handler(Looper.getMainLooper()).postDelayed({
+                                    navController.navigate("group_screen") {
+                                        popUpTo(0) { inclusive = true }
+                                    }
+                                    onComplete()
+                                }, 4000) // Retraso de 4 segundos
                             }
                             .addOnFailureListener { exception ->
                                 Log.e("LeaveGroup", "Error al mover al grupo sin grupo: ${exception.message}")
+                                onComplete()
                             }
                     }
                     .addOnFailureListener { exception ->
                         Log.e("LeaveGroup", "Error al eliminar del grupo: ${exception.message}")
+                        onComplete()
                     }
             } else {
                 Log.e("LeaveGroup", "El usuario no existe en el grupo actual")
+                onComplete()
             }
         }
         .addOnFailureListener { exception ->
             Log.e("LeaveGroup", "Error al obtener datos del usuario: ${exception.message}")
+            onComplete()
         }
 }
-

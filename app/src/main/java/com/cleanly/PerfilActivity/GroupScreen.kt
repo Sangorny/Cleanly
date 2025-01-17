@@ -5,12 +5,14 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -31,7 +33,6 @@ import com.google.firebase.firestore.FirebaseFirestore
 fun GroupScreen(
     navController: NavHostController,
     userId: String,
-    showTopBarAndBottomBar: Boolean
 ) {
     val context = LocalContext.current
     var groupName by remember { mutableStateOf("") }
@@ -75,107 +76,98 @@ fun GroupScreen(
     }
 
     Scaffold(
-        topBar = {
-            if (showTopBarAndBottomBar) {
-                WelcomeTopBar(
-                    photoUrl = null,
-                    displayName = "Crear/Unirse a un Grupo",
-                    onProfileClick = { /* Acción de perfil */ },
-                    onGroupManagementClick = { /* Acción de gestión de grupos */ },
-                    onLogoutClick = {
-                        FirebaseAuth.getInstance().signOut()
-                        val intent = Intent(context, MainActivity::class.java)
-                        context.startActivity(intent)
-                    }
-                )
-            }
-        },
-        bottomBar = {
-            if (showTopBarAndBottomBar) {
-                WelcomeDownBar { selectedScreen ->
-                    when (selectedScreen) {
-                        "Mis Tareas" -> navController.navigate("welcome")
-                        "Zonas" -> navController.navigate("zonas")
-                        "Estadísticas" -> navController.navigate("estadisticas")
-                        "Programar" -> navController.navigate("programar")
-                    }
-                }
-            }
-        },
         content = { paddingValues ->
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
+                    .padding(paddingValues)
             ) {
-                Column(
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color(0xFF0D47A1), Color(0xFF00E676)) // Fondo degradado
+                            )
+                        )
                 ) {
-                    Text("Crear o Unirse a un Grupo", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Creación de grupo
-                    TextField(
-                        value = groupName,
-                        onValueChange = { groupName = it },
-                        label = { Text("Nombre del Grupo") },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Ingrese el nombre del grupo") }
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Button(
-                        onClick = { handleCreateGroup() },
+                    Column(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00C853)),
-                        shape = RoundedCornerShape(16.dp)
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        if (isLoading) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
-                        } else {
-                            Text("Crear Grupo", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = "Crear o Unirse a un Grupo",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White // Texto blanco
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Creación de grupo
+                        TextField(
+                            value = groupName,
+                            onValueChange = { groupName = it },
+                            label = { Text("Nombre del Grupo", color = Color.Black) }, // Texto blanco
+                            placeholder = { Text("Introduce nombre grupo", color = Color.Gray) },
+                            modifier = Modifier
+                                .width(260.dp)
+                                .background(Color.Transparent)
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Button(
+                            onClick = { handleCreateGroup() },
+                            modifier = Modifier
+                                .width(160.dp)
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE91E63)), // Nuevo color del botón
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            if (isLoading) {
+                                CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White)
+                            } else {
+                                Text("Crear Grupo", color = Color.White, fontWeight = FontWeight.Bold)
+                            }
                         }
-                    }
 
-                    Spacer(modifier = Modifier.height(32.dp))
+                        Spacer(modifier = Modifier.height(32.dp))
 
-                    // Unirse a un grupo
-                    TextField(
-                        value = groupCode,
-                        onValueChange = { groupCode = it },
-                        label = { Text("Código del Grupo") },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Ingrese el código del grupo") },
-                        isError = errorMessage != null
-                    )
+                        // Unirse a un grupo
+                        TextField(
+                            value = groupCode,
+                            onValueChange = { groupCode = it },
+                            label = { Text("Código del Grupo", color = Color.Black) },
+                            placeholder = { Text("Introduce Código", color = Color.Gray) },
+                            isError = errorMessage != null,
+                            modifier = Modifier
+                                .width(200.dp)
+                                .background(Color.Transparent)
+                        )
 
-                    errorMessage?.let {
-                        Text(text = it, color = Color.Red, fontSize = 12.sp)
-                    }
+                        errorMessage?.let {
+                            Text(text = it, color = Color.Red, fontSize = 12.sp)
+                        }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                    Button(
-                        onClick = { handleJoinGroup() },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00C853)),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        if (isLoading) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
-                        } else {
-                            Text("Unirse a Grupo", color = Color.White, fontWeight = FontWeight.Bold)
+                        Button(
+                            onClick = { handleJoinGroup() },
+                            modifier = Modifier
+                                .width(160.dp)
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE91E63)), // Otro color del botón
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            if (isLoading) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
+                            } else {
+                                Text("Unirse Grupo", color = Color.White, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
@@ -196,7 +188,6 @@ fun handleFirestoreError(context: Context, tag: String, message: String?, except
     Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show()
 }
 
-// Crear un grupo
 fun createGroup(context: Context, name: String, userId: String, onSuccess: () -> Unit) {
     val firestore = FirebaseFirestore.getInstance()
     val uniqueId = generateUniqueId() // Genera un ID único para el grupo
@@ -212,7 +203,46 @@ fun createGroup(context: Context, name: String, userId: String, onSuccess: () ->
     firestore.collection(GROUPS_COLLECTION).document(uniqueId).set(group)
         .addOnSuccessListener {
             Log.d("createGroup", "Grupo creado con éxito: $uniqueId")
-            onSuccess()
+
+            // Mover al usuario al nuevo grupo
+            firestore.collection(GROUPS_COLLECTION).document(SINGLE_GROUP)
+                .collection(USERS_SUBCOLLECTION).document(userId)
+                .get()
+                .addOnSuccessListener { userSnapshot ->
+                    if (userSnapshot.exists()) {
+                        // Copia los datos existentes del usuario
+                        val userData = userSnapshot.data?.toMutableMap() ?: mutableMapOf()
+
+                        // Asigna el rol de administrador
+                        userData["rol"] = "administrador"
+
+                        // Añade al usuario al nuevo grupo
+                        firestore.collection(GROUPS_COLLECTION).document(uniqueId)
+                            .collection(USERS_SUBCOLLECTION).document(userId)
+                            .set(userData)
+                            .addOnSuccessListener {
+                                // Elimina al usuario del grupo 'singrupo'
+                                firestore.collection(GROUPS_COLLECTION).document(SINGLE_GROUP)
+                                    .collection(USERS_SUBCOLLECTION).document(userId)
+                                    .delete()
+                                    .addOnSuccessListener {
+                                        Log.d("createGroup", "Usuario movido al nuevo grupo $uniqueId como administrador")
+                                        onSuccess() // Notifica que la operación fue exitosa
+                                    }
+                                    .addOnFailureListener { exception ->
+                                        handleFirestoreError(context, "createGroup", "Error al eliminar usuario de 'singrupo'", exception)
+                                    }
+                            }
+                            .addOnFailureListener { exception ->
+                                handleFirestoreError(context, "createGroup", "Error al mover usuario al nuevo grupo", exception)
+                            }
+                    } else {
+                        handleFirestoreError(context, "createGroup", "No se encontró al usuario en 'singrupo'", null)
+                    }
+                }
+                .addOnFailureListener { exception ->
+                    handleFirestoreError(context, "createGroup", "Error al obtener datos del usuario", exception)
+                }
         }
         .addOnFailureListener { exception ->
             handleFirestoreError(context, "createGroup", "Error al crear el grupo", exception)

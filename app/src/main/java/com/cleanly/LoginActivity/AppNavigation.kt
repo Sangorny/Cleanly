@@ -95,11 +95,11 @@ fun AppNavigation() {
         // Pantalla GroupScreen
         composable("group_screen/{userId}") { backStackEntry ->
             val userId = backStackEntry.arguments?.getString("userId") ?: ""
-            GroupScreen(
-                navController = navController,
-                userId = userId,
-                showTopBarAndBottomBar = false // No mostrar las barras en GroupScreen
-            )
+            if (userId.isNotEmpty()) {
+                GroupScreen(navController = navController, userId = userId)
+            } else {
+                Log.e("NavHost", "userId no está disponible.")
+            }
         }
 
         composable("group_management/{grupoId}") { backStackEntry ->
