@@ -16,8 +16,6 @@ import com.cleanly.ui.theme.CleanlyTheme
 import com.google.firebase.firestore.FirebaseFirestore
 
 
-
-@OptIn(ExperimentalMaterial3Api::class)
 class TareaActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,17 +43,19 @@ class TareaActivity : ComponentActivity() {
 
 
 @Composable
-fun TareaScreen(navController: NavHostController, zonaSeleccionada: String) {
+fun TareaScreen(navController: NavHostController, groupId: String, zonaSeleccionada: String) {
     val db = FirebaseFirestore.getInstance()
-    val taskList = remember { mutableStateListOf<Tarea>() } // Cambiar el tipo a List<Tarea>
+    val taskList = remember { mutableStateListOf<Tarea>() }
     val updateTaskList: (List<Tarea>) -> Unit = { newList ->
         taskList.clear()
         taskList.addAll(newList)
     }
 
-    LaunchedEffect(zonaSeleccionada) {
-        TareasBD.cargarTareasDesdeFirestore(db, zonaSeleccionada) { listaTareas ->
-            updateTaskList(listaTareas) // Pasar directamente List<Tarea>
+    LaunchedEffect(zonaSeleccionada, groupId) {
+        if (groupId.isNotEmpty()) {
+            TareasBD.cargarTareasDesdeFirestore(db, groupId, zonaSeleccionada) { listaTareas ->
+                updateTaskList(listaTareas)
+            }
         }
     }
 
@@ -67,15 +67,16 @@ fun TareaScreen(navController: NavHostController, zonaSeleccionada: String) {
         ) {
             CRUDTareas(
                 db = db,
-                taskList = taskList, // Pasar List<Tarea>
+                groupId = groupId, // Pasa `groupId` aquí
+                taskList = taskList,
                 onCreate = {
-                    TareasBD.cargarTareasDesdeFirestore(db, zonaSeleccionada) { listaTareas ->
+                    TareasBD.cargarTareasDesdeFirestore(db, groupId, zonaSeleccionada) { listaTareas ->
                         updateTaskList(listaTareas)
                     }
                 },
-                onDelete = { reloadTaskList(db, zonaSeleccionada, updateTaskList) },
-                onList = { reloadTaskList(db, zonaSeleccionada, updateTaskList) },
-                onEdit = { reloadTaskList(db, zonaSeleccionada, updateTaskList) },
+                onDelete = { reloadTaskList(db, groupId, zonaSeleccionada, updateTaskList) },
+                onList = { reloadTaskList(db, groupId, zonaSeleccionada, updateTaskList) },
+                onEdit = { reloadTaskList(db, groupId, zonaSeleccionada, updateTaskList) },
                 onTaskListUpdated = updateTaskList,
                 zonaSeleccionada = zonaSeleccionada
             )
@@ -85,10 +86,11 @@ fun TareaScreen(navController: NavHostController, zonaSeleccionada: String) {
 
 private fun reloadTaskList(
     db: FirebaseFirestore,
+    groupId: String,
     zonaSeleccionada: String,
     updateTaskList: (List<Tarea>) -> Unit
 ) {
-    TareasBD.cargarTareasDesdeFirestore(db, zonaSeleccionada) { listaTareas ->
-        updateTaskList(listaTareas) // Pasar directamente List<Tarea>
+    TareasBD.cargarTareasDesdeFirestore(db, groupId, zonaSeleccionada) { listaTareas ->
+        updateTaskList(listaTareas)
     }
 }

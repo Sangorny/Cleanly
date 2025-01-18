@@ -45,6 +45,7 @@ fun GroupManagementScreen(
     var isLoading by remember { mutableStateOf(true) }
     var showMembersDialog by remember { mutableStateOf(false) }
     var isLeavingGroup by remember { mutableStateOf(false) }
+    var showConfirmationDialog by remember { mutableStateOf(false) }
 
     if (isLeavingGroup) {
         LoadingScreen(isLoading = isLeavingGroup) {
@@ -109,12 +110,7 @@ fun GroupManagementScreen(
                                 Spacer(modifier = Modifier.height(16.dp))
 
                                 Button(
-                                    onClick = {
-                                        isLeavingGroup = true
-                                        leaveGroupAndRedirectWithLoading(userId, groupId, navController, firestore) {
-                                            isLeavingGroup = false
-                                        }
-                                    },
+                                    onClick = { showConfirmationDialog = true },
                                     modifier = Modifier.fillMaxWidth().height(56.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF5252)),
                                     shape = RoundedCornerShape(16.dp)
@@ -144,11 +140,42 @@ fun GroupManagementScreen(
                                 onDismiss = { showMembersDialog = false }
                             )
                         }
+
+                        if (showConfirmationDialog) {
+                            ConfirmationDialog(
+                                onConfirm = {
+                                    isLeavingGroup = true
+                                    leaveGroupAndRedirectWithLoading(userId, groupId, navController, firestore) {
+                                        isLeavingGroup = false
+                                    }
+                                },
+                                onDismiss = { showConfirmationDialog = false }
+                            )
+                        }
                     }
                 }
             }
         )
     }
+}
+
+@Composable
+fun ConfirmationDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Confirmación") },
+        text = { Text("¿Estas seguro de abandonar el grupo?") },
+        confirmButton = {
+            Button(onClick = onConfirm) {
+                Text("Sí")
+            }
+        },
+        dismissButton = {
+            Button(onClick = onDismiss) {
+                Text("No")
+            }
+        }
+    )
 }
 
 @Composable
@@ -209,7 +236,7 @@ fun leaveGroupAndRedirectWithLoading(
                                         popUpTo(0) { inclusive = true }
                                     }
                                     onComplete()
-                                }, 4000) // Retraso de 4 segundos
+                                }, 6000) // Retraso de 6 segundos
                             }
                             .addOnFailureListener { exception ->
                                 Log.e("LeaveGroup", "Error al mover al grupo sin grupo: ${exception.message}")

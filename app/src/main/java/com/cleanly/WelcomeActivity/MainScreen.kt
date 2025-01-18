@@ -195,10 +195,6 @@ fun MainScreen(
                     )
                 }
 
-                composable("zonas") {
-                    Zonas { onNavigateToZonas() }
-                }
-
                 composable("group_screen/{userId}") { backStackEntry ->
                     val userId = backStackEntry.arguments?.getString("userId") ?: ""
                     GroupScreen(
@@ -256,14 +252,30 @@ fun MainScreen(
                 composable("programar") {
                     ProgramarScreen(navController = navController)
                 }
-                composable("tarea") {
-                    if (zonaSeleccionada != null) {
-                        TareaScreen(
-                            navController = navController,
-                            zonaSeleccionada = zonaSeleccionada
-                        )
+
+                composable("zonas") {
+                    Zonas { zoneName ->
+                        navController.navigate("tarea?zona=$zoneName&groupId=$groupId")
                     }
                 }
+
+                composable(
+                    route = "tarea?zona={zona}&groupId={groupId}",
+                    arguments = listOf(
+                        navArgument("zona") { type = NavType.StringType; defaultValue = "" },
+                        navArgument("groupId") { type = NavType.StringType; defaultValue = "" }
+                    )
+                ) { backStackEntry ->
+                    val zona = backStackEntry.arguments?.getString("zona") ?: ""
+                    val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
+
+                    TareaScreen(
+                        navController = navController,
+                        zonaSeleccionada = zona,
+                        groupId = groupId // Pasar el groupId al Composable
+                    )
+                }
+
             }
         }
     }

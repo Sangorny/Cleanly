@@ -2,6 +2,7 @@ package com.cleanly.TareasActivity
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -18,6 +19,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.firestore.FirebaseFirestore
+import androidx.compose.foundation.lazy.items
+
 
 data class Tarea(
     val nombre: String,
@@ -31,12 +34,13 @@ data class Tarea(
 @Composable
 fun CRUDTareas(
     db: FirebaseFirestore,
-    taskList: List<Tarea>, // Cambiar el tipo
+    groupId: String, // ID del grupo para identificar la subcolección
+    taskList: List<Tarea>,
     onCreate: () -> Unit,
     onDelete: () -> Unit,
     onList: () -> Unit,
     onEdit: () -> Unit,
-    onTaskListUpdated: (List<Tarea>) -> Unit, // Cambiar el tipo
+    onTaskListUpdated: (List<Tarea>) -> Unit,
     zonaSeleccionada: String
 ) {
     val context = LocalContext.current
@@ -50,6 +54,7 @@ fun CRUDTareas(
     var nombreOriginal by remember { mutableStateOf("") }
     var taskSubzona by remember { mutableStateOf("") }
     var selectedPriority by remember { mutableStateOf("Baja") }
+
     val handleCreate = {
         if (taskName.isNotBlank() && taskPoints.isNotBlank()) {
             val puntos = taskPoints.toIntOrNull() ?: 0
@@ -57,20 +62,23 @@ fun CRUDTareas(
 
             TareasBD.agregarTareaAFirestore(
                 db = db,
+                groupId = groupId, 
                 nombre = taskName,
-                puntos = taskPoints.toIntOrNull() ?: 0,
+                puntos = puntos,
                 zona = zonaSeleccionada,
-                subzona = taskSubzona,
-                prioridad = selectedPriority, // Pasar la prioridad seleccionada
+                subzona = subzona,
+                prioridad = selectedPriority,
                 context = context,
                 onSuccess = {
                     showSnackbarMessage = "Tarea añadida correctamente"
-                    onCreate()
+                    onCreate() // Refrescar tareas
                     taskName = ""
                     taskPoints = ""
                     taskSubzona = ""
-                    selectedPriority = "Baja" // Reiniciar a la prioridad predeterminada
-                    TareasBD.cargarTareasDesdeFirestore(db, zonaSeleccionada) { tareasRecargadas ->
+                    selectedPriority = "Baja" // Reinicia los campos del formulario
+
+                    // Recargar la lista de tareas desde Firestore
+                    TareasBD.cargarTareasDesdeFirestore(db, groupId, zonaSeleccionada) { tareasRecargadas ->
                         onTaskListUpdated(tareasRecargadas)
                         showDialog = false
                     }
@@ -97,42 +105,41 @@ fun CRUDTareas(
             taskName = tareaSeleccionada.nombre
             taskPoints = tareaSeleccionada.puntos.toString()
             taskSubzona = tareaSeleccionada.subzona
-            selectedPriority = tareaSeleccionada.prioridad // Cargar prioridad actual
+            selectedPriority = tareaSeleccionada.prioridad
             showEditDialog = true
         }
     }
 
     val handleDelete = {
-        val tareasMarcadasCount = checkedStates.values.count { it }
-        val nombresTareasMarcadas = taskList
-            .filter { tarea -> checkedStates[tarea.nombre] == true } // Usar tarea.nombre
-            .map { it.nombre } // Extraer los nombres
+        val nombresTareasMarcadas = taskList.filter { tarea -> checkedStates[tarea.nombre] == true }
+            .map { it.nombre }
 
         if (nombresTareasMarcadas.isNotEmpty()) {
             TareasBD.eliminarTareasDeFirestore(
                 db = db,
+                groupId = groupId,
                 nombresDeTareas = nombresTareasMarcadas,
                 context = context,
                 onSuccess = {
-                    showSnackbarMessage = "$tareasMarcadasCount tareas borradas correctamente"
+                    showSnackbarMessage = "Tareas eliminadas correctamente"
                     checkedStates.clear()
-                    TareasBD.cargarTareasDesdeFirestore(db, zonaSeleccionada) { tareasRecargadas ->
-                        onTaskListUpdated(tareasRecargadas) // Pasar la lista completa de Tarea
+                    TareasBD.cargarTareasDesdeFirestore(db, groupId, zonaSeleccionada) { tareasRecargadas ->
+                        onTaskListUpdated(tareasRecargadas)
                     }
                     onDelete()
                 },
                 onFailure = {
-                    showSnackbarMessage = "Error al borrar tareas"
+                    showSnackbarMessage = "Error al eliminar tareas"
                 }
             )
         } else {
-            showSnackbarMessage = "No hay tareas seleccionadas para borrar"
+            showSnackbarMessage = "No hay tareas seleccionadas para eliminar"
         }
     }
 
     val onList = {
-        TareasBD.cargarTareasDesdeFirestore(db, zonaSeleccionada) { listaTareas ->
-            onTaskListUpdated(listaTareas) // Pasar la lista completa de Tarea
+        TareasBD.cargarTareasDesdeFirestore(db, groupId, zonaSeleccionada) { listaTareas ->
+            onTaskListUpdated(listaTareas)
             showSnackbarMessage = "Lista de tareas actualizada"
         }
     }
@@ -155,15 +162,14 @@ fun CRUDTareas(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Mostrar el nombre de la zona seleccionada
             Text(
                 text = "$zonaSeleccionada",
-                style = MaterialTheme.typography.headlineSmall.copy( // Copiar el estilo base
-                    fontSize = 24.sp, // Aumentar el tamaño de la letra
-                    fontWeight = FontWeight.Bold // Aplicar negrita
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold
                 ),
-                color = Color.White, // Cambiar a blanco
-                modifier = Modifier.align(Alignment.Start) // Alinear a la izquierda
+                color = Color.White,
+                modifier = Modifier.align(Alignment.Start)
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -176,20 +182,23 @@ fun CRUDTareas(
             )
 
             Spacer(modifier = Modifier.height(16.dp))
-            Spacer(modifier = Modifier.height(16.dp))
 
-            taskList.forEach { tarea ->
-                TaskRow(
-                    task = tarea.nombre,
-                    puntos = tarea.puntos,
-                    subzona = tarea.subzona,
-                    prioridad = tarea.prioridad,
-                    isChecked = checkedStates[tarea.nombre] ?: false,
-                    onCheckedChange = { isChecked -> checkedStates[tarea.nombre] = isChecked }
-                )
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalAlignment = Alignment.Start
+            ) {
+                items(taskList) { tarea ->
+                    TaskRow(
+                        task = tarea.nombre,
+                        puntos = tarea.puntos,
+                        subzona = tarea.subzona,
+                        prioridad = tarea.prioridad,
+                        isChecked = checkedStates[tarea.nombre] ?: false,
+                        onCheckedChange = { isChecked -> checkedStates[tarea.nombre] = isChecked }
+                    )
+                }
             }
-
-
 
             showSnackbarMessage?.let { message ->
                 LaunchedEffect(message) {
@@ -197,9 +206,8 @@ fun CRUDTareas(
                     showSnackbarMessage = null
                 }
             }
-            if (showDialog) {
-                var selectedPriority by remember { mutableStateOf("Baja") }
 
+            if (showDialog) {
                 AlertDialog(
                     onDismissRequest = { showDialog = false },
                     title = { Text("Añadir Nueva Tarea") },
@@ -231,26 +239,13 @@ fun CRUDTareas(
                         }
                     },
                     confirmButton = {
-                        Button(onClick = {
-                            // Pasar directamente la prioridad al crear la tarea
-                            TareasBD.agregarTareaAFirestore(
-                                db = db,
-                                nombre = taskName,
-                                puntos = taskPoints.toIntOrNull() ?: 0,
-                                zona = zonaSeleccionada,
-                                subzona = taskSubzona,
-                                prioridad = selectedPriority, // Prioridad seleccionada
-                                context = context,
-                                onSuccess = { onList() }
-                            )
-                            showDialog = false // Cerrar el diálogo después de agregar la tarea
-                        }) {
-                            Text("Add")
+                        Button(onClick = handleCreate) {
+                            Text("Añadir")
                         }
                     },
                     dismissButton = {
                         Button(onClick = { showDialog = false }) {
-                            Text("Cancel")
+                            Text("Cancelar")
                         }
                     }
                 )
@@ -287,20 +282,7 @@ fun CRUDTareas(
                         }
                     },
                     confirmButton = {
-                        Button(onClick = {
-                            TareasBD.actualizarTareaEnFirestore(
-                                db = db,
-                                nombreOriginal = nombreOriginal,
-                                nuevoNombre = taskName,
-                                nuevosPuntos = taskPoints.toIntOrNull() ?: 0,
-                                zona = zonaSeleccionada,
-                                nuevaSubzona = taskSubzona,
-                                nuevaPrioridad = selectedPriority, // Pasar la prioridad actualizada
-                                context = context,
-                                onSuccess = { onList() }
-                            )
-                            showEditDialog = false
-                        }) {
+                        Button(onClick = handleEdit) {
                             Text("Aceptar")
                         }
                     },

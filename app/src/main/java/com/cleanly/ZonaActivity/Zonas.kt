@@ -77,12 +77,9 @@ fun Zonas(onZoneClick: (String) -> Unit) {
                     .weight(1f)
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
-                onZoneClick = { zoneName ->
-                    val intent = Intent(context, TareaActivity::class.java)
-                    intent.putExtra("zona", zoneName)
-                    context.startActivity(intent)
-                }
+                onZoneClick = onZoneClick // Ahora navega a través del `NavController`
             )
+
 
             Spacer(modifier = Modifier.height(16.dp))
         }
