@@ -1,6 +1,7 @@
 package com.cleanly
 
-import android.content.Intent
+
+import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -16,20 +17,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavHostController
 
 
 @Composable
-fun Zonas(onZoneClick: (String) -> Unit) {
-    // Zonas predefinidas (lista fija)
+fun Zonas(
+    groupId: String,
+    onZoneClick: (String) -> Unit // Asegúrate de incluir este parámetro
+) {
     val zones = listOf(
         "Aseo" to R.drawable.bano,
         "Cocina" to R.drawable.cocina,
@@ -39,13 +41,11 @@ fun Zonas(onZoneClick: (String) -> Unit) {
         "Exterior" to R.drawable.default5
     )
 
-    val context = LocalContext.current // Obtén el contexto una vez aquí
-
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
-                brush = Brush.verticalGradient(
+                Brush.verticalGradient(
                     colors = listOf(
                         Color(0xFF0D47A1),
                         Color(0xFF00E676)
@@ -70,16 +70,10 @@ fun Zonas(onZoneClick: (String) -> Unit) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Llama a ZoneGrid pasando el contexto
             ZoneGrid(
                 zones = zones,
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                onZoneClick = onZoneClick // Ahora navega a través del `NavController`
+                onZoneClick = onZoneClick // Asegúrate de pasar el callback correctamente
             )
-
 
             Spacer(modifier = Modifier.height(16.dp))
         }
@@ -90,12 +84,12 @@ fun Zonas(onZoneClick: (String) -> Unit) {
 fun ZoneGrid(
     zones: List<Pair<String, Int>>,
     modifier: Modifier = Modifier,
-    onZoneClick: (String) -> Unit
+    onZoneClick: (String) -> Unit // Parámetro necesario para manejar clics
 ) {
+
     val customFontFamily = FontFamily(
         Font(R.font.bernadette)
     )
-
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         modifier = modifier,
@@ -108,7 +102,7 @@ fun ZoneGrid(
                     .size(150.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surface)
-                    .clickable { onZoneClick(zoneName) },
+                    .clickable { onZoneClick(zoneName) }, // Llamada al callback
                 contentAlignment = Alignment.Center
             ) {
                 Image(

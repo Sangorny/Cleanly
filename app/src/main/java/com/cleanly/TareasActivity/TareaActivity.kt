@@ -11,7 +11,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.cleanly.TareasActivity.CRUDTareas
 import com.cleanly.TareasActivity.Tarea
-import com.cleanly.TareasActivity.TareasBD
 import com.cleanly.ui.theme.CleanlyTheme
 import com.google.firebase.firestore.FirebaseFirestore
 
@@ -51,15 +50,38 @@ fun TareaScreen(navController: NavHostController, groupId: String, zonaSeleccion
         taskList.addAll(newList)
     }
 
-    LaunchedEffect(zonaSeleccionada, groupId) {
-        if (groupId.isNotEmpty()) {
-            TareasBD.cargarTareasDesdeFirestore(db, groupId, zonaSeleccionada) { listaTareas ->
-                updateTaskList(listaTareas)
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Función local para cargar tareas desde Firestore
+    fun cargarTareasDesdeFirestore(
+        db: FirebaseFirestore,
+        groupId: String,
+        zonaSeleccionada: String,
+        onSuccess: (List<Tarea>) -> Unit
+    ) {
+        db.collection("grupos")
+            .document(groupId)
+            .collection("tareas")
+            .whereEqualTo("zona", zonaSeleccionada)
+            .get()
+            .addOnSuccessListener { result ->
+                val listaTareas = result.mapNotNull { document ->
+                    val nombre = document.getString("nombre") ?: return@mapNotNull null
+                    val puntos = document.getLong("puntos")?.toInt() ?: return@mapNotNull null
+                    val subzona = document.getString("subzona") ?: "Sin Subzona"
+                    Tarea(nombre, puntos, zonaSeleccionada, subzona)
+                }
+                onSuccess(listaTareas)
             }
-        }
+            .addOnFailureListener {
+                // Manejar el error, si es necesario
+            }
     }
 
-    Scaffold { paddingValues ->
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+    ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -67,10 +89,9 @@ fun TareaScreen(navController: NavHostController, groupId: String, zonaSeleccion
         ) {
             CRUDTareas(
                 db = db,
-                groupId = groupId, // Pasa `groupId` aquí
                 taskList = taskList,
                 onCreate = {
-                    TareasBD.cargarTareasDesdeFirestore(db, groupId, zonaSeleccionada) { listaTareas ->
+                    cargarTareasDesdeFirestore(db, groupId, zonaSeleccionada) { listaTareas ->
                         updateTaskList(listaTareas)
                     }
                 },
@@ -78,19 +99,35 @@ fun TareaScreen(navController: NavHostController, groupId: String, zonaSeleccion
                 onList = { reloadTaskList(db, groupId, zonaSeleccionada, updateTaskList) },
                 onEdit = { reloadTaskList(db, groupId, zonaSeleccionada, updateTaskList) },
                 onTaskListUpdated = updateTaskList,
+                groupId = groupId,
                 zonaSeleccionada = zonaSeleccionada
             )
         }
     }
 }
 
+// Función para recargar la lista de tareas
 private fun reloadTaskList(
     db: FirebaseFirestore,
     groupId: String,
     zonaSeleccionada: String,
     updateTaskList: (List<Tarea>) -> Unit
 ) {
-    TareasBD.cargarTareasDesdeFirestore(db, groupId, zonaSeleccionada) { listaTareas ->
-        updateTaskList(listaTareas)
-    }
+    db.collection("grupos")
+        .document(groupId)
+        .collection("tareas")
+        .whereEqualTo("zona", zonaSeleccionada)
+        .get()
+        .addOnSuccessListener { result ->
+            val listaTareas = result.mapNotNull { document ->
+                val nombre = document.getString("nombre") ?: return@mapNotNull null
+                val puntos = document.getLong("puntos")?.toInt() ?: return@mapNotNull null
+                val subzona = document.getString("subzona") ?: "Sin Subzona"
+                Tarea(nombre, puntos, zonaSeleccionada, subzona)
+            }
+            updateTaskList(listaTareas)
+        }
+        .addOnFailureListener {
+            // Manejar el error, si es necesario
+        }
 }

@@ -1,6 +1,7 @@
 package com.cleanly
 
 import android.content.Intent
+import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.layout.padding
@@ -171,17 +172,19 @@ fun MainScreen(
                 }
             },
             bottomBar = {
-                if (groupId != null) {
-                    WelcomeDownBar { selectedScreen ->
-                        when (selectedScreen) {
-                            "Mis Tareas" -> navController.navigate("welcome")
-                            "Zonas" -> navController.navigate("zonas")
-                            "Estadísticas" -> navController.navigate("estadisticas")
-                            "Programar" -> navController.navigate("programar")
+                WelcomeDownBar { selectedScreen ->
+                    when (selectedScreen) {
+                        "Mis Tareas" -> navController.navigate("welcome")
+                        "Zonas" -> {
+                            // Navegar a 'zonas' sin el groupId en la URL
+                            navController.navigate("zonas")
                         }
+                        "Estadísticas" -> navController.navigate("estadisticas")
+                        "Programar" -> navController.navigate("programar")
                     }
                 }
             }
+
         ) { paddingValues ->
             NavHost(
                 navController = navController,
@@ -191,7 +194,8 @@ fun MainScreen(
                 composable("welcome") {
                     Welcome(
                         navController = navController,
-                        onTareaClick = onNavigateToTarea
+                        onTareaClick = onNavigateToTarea,
+                        groupId = groupId.orEmpty() // Pasar el groupId
                     )
                 }
 
@@ -232,8 +236,7 @@ fun MainScreen(
                 }
 
                 composable("profile") {
-                    val grupoId =
-                        "id_del_grupo_actual" // Obtén el grupo al que pertenece el usuario
+                    val grupoId = "" // Obtén el grupo al que pertenece el usuario
                     val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
                     ProfileScreen(
@@ -254,10 +257,38 @@ fun MainScreen(
                 }
 
                 composable("zonas") {
-                    Zonas { zoneName ->
-                        navController.navigate("tarea?zona=$zoneName&groupId=$groupId")
-                    }
+                    Zonas(
+                        groupId = groupId.orEmpty(), // Pasar el groupId directamente
+                        onZoneClick = { zoneName ->
+                            val encodedZone = Uri.encode(zoneName)
+                            val encodedGroupId = Uri.encode(groupId.orEmpty())
+                            navController.navigate("tarea?zona=$encodedZone&groupId=$encodedGroupId")
+                        }
+                    )
                 }
+
+               /* composable(
+                    route = "zonas/{groupId}",
+                    arguments = listOf(
+                        navArgument("groupId") { type = NavType.StringType }
+                    )
+                ) { backStackEntry ->
+                    val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
+
+                    if (groupId.isNotEmpty()) {
+                        Zonas(groupId = groupId) { zoneName ->
+                            navController.navigate("tarea?zona=$zoneName&groupId=$groupId")
+                        }
+                    } else {
+                        Log.e("NavHost", "groupId está vacío. Verifica la navegación.")
+                        Toast.makeText(
+                            context,
+                            "Error al cargar las zonas: groupId no encontrado.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }*/
+
 
                 composable(
                     route = "tarea?zona={zona}&groupId={groupId}",
@@ -266,13 +297,13 @@ fun MainScreen(
                         navArgument("groupId") { type = NavType.StringType; defaultValue = "" }
                     )
                 ) { backStackEntry ->
-                    val zona = backStackEntry.arguments?.getString("zona") ?: ""
-                    val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
+                    val zona = backStackEntry.arguments?.getString("zona").orEmpty()
+                    val groupId = backStackEntry.arguments?.getString("groupId").orEmpty()
 
                     TareaScreen(
                         navController = navController,
                         zonaSeleccionada = zona,
-                        groupId = groupId // Pasar el groupId al Composable
+                        groupId = groupId
                     )
                 }
 
@@ -280,4 +311,3 @@ fun MainScreen(
         }
     }
 }
-

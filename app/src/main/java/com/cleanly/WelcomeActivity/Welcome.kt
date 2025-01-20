@@ -21,7 +21,8 @@ import com.google.firebase.firestore.FirebaseFirestore
 @Composable
 fun Welcome(
     navController: NavHostController,
-    onTareaClick: (Tarea) -> Unit
+    onTareaClick: (Tarea) -> Unit,
+    groupId: String
 ) {
     val auth = FirebaseAuth.getInstance()
     val currentUser = auth.currentUser
@@ -54,7 +55,11 @@ fun Welcome(
                             )
                         )
                 ) {
-                    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp)
+                    ) {
                         Text(
                             text = "Tareas",
                             fontSize = 24.sp,

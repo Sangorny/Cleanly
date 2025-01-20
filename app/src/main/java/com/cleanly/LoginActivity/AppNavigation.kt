@@ -2,6 +2,7 @@ package com.cleanly
 
 import MisTareasScreen
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
@@ -14,6 +15,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import com.cleanly.PerfilActivity.GroupManagementScreen
 import com.cleanly.PerfilActivity.GroupScreen
 
@@ -48,7 +51,14 @@ fun AppNavigation() {
         }
 
         // Pantalla Welcome
-        composable("welcome") {
+        composable(
+            route = "welcome/{groupId}",
+            arguments = listOf(
+                navArgument("groupId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
+
             Welcome(
                 navController = navController,
                 onTareaClick = { tarea ->
@@ -56,7 +66,8 @@ fun AppNavigation() {
                         popUpTo("welcome") { inclusive = false }
                         launchSingleTop = true
                     }
-                }
+                },
+                groupId = groupId // Pasar el groupId al Composable
             )
         }
 
@@ -112,6 +123,46 @@ fun AppNavigation() {
             )
         }
 
+        /*// Navegación para Zonas
+        composable(
+            route = "zonas/{groupId}",
+            arguments = listOf(
+                navArgument("groupId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
+
+            if (groupId.isNotEmpty()) {
+                Zonas(groupId = groupId) { zoneName ->
+                    navController.navigate("tarea?zona=$zoneName&groupId=$groupId")
+                }
+            } else {
+                Log.e("NavHost", "groupId está vacío. Verifica la navegación.")
+                Toast.makeText(
+                    LocalContext.current,
+                    "Error al cargar las zonas: groupId no encontrado.",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }*/
+
+       /* // Navegación para TareaScreen
+        composable(
+            route = "tarea?zona={zona}&groupId={groupId}",
+            arguments = listOf(
+                navArgument("zona") { type = NavType.StringType; defaultValue = "" },
+                navArgument("groupId") { type = NavType.StringType; defaultValue = "" }
+            )
+        ) { backStackEntry ->
+            val zona = backStackEntry.arguments?.getString("zona") ?: ""
+            val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
+
+            TareaScreen(
+                navController = navController,
+                zonaSeleccionada = zona,
+                groupId = groupId // Pasar el groupId
+            )
+        }*/
 
     }
 }

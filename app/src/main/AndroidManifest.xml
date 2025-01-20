@@ -24,10 +24,6 @@
         <activity
             android:name=".TareaActivity"
             android:exported="false" />
-        <activity
-            android:name=".ZonaActivity.ZonasActivity"
-            android:exported="false" />
-
 
         <activity
             android:name=".MainActivity"
