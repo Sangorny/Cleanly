@@ -51,7 +51,7 @@ fun AppNavigation() {
         }
 
         // Pantalla Welcome
-        composable(
+      /*  composable(
             route = "welcome/{groupId}",
             arguments = listOf(
                 navArgument("groupId") { type = NavType.StringType }
@@ -69,7 +69,7 @@ fun AppNavigation() {
                 },
                 groupId = groupId // Pasar el groupId al Composable
             )
-        }
+        }*/
 
         // Otras pantallas
         composable("mis_tareas") {

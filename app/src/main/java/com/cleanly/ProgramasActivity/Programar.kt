@@ -40,7 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.google.firebase.firestore.FirebaseFirestore
-import java.util.jar.Manifest
+
 
 data class Tarea(
     val nombre: String,
@@ -51,7 +51,7 @@ data class Tarea(
 )
 
 @Composable
-fun ProgramarScreen(navController: NavHostController) {
+fun ProgramarScreen(navController: NavHostController, groupId: String) {
     var todasLasTareas by remember { mutableStateOf<List<Tarea>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var tareaSeleccionada by remember { mutableStateOf<Tarea?>(null) }
@@ -80,14 +80,24 @@ fun ProgramarScreen(navController: NavHostController) {
             launcher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
         }
 
-        cargarTodasLasTareasDesdeFirestore(
-            db = firestore,
-            onSuccess = { tareas ->
-                todasLasTareas = tareas
-                isLoading = false
-            },
-            onFailure = { isLoading = false }
-        )
+        // Asegúrate de que groupId esté disponible
+        if (groupId.isNotEmpty()) {
+            cargarTodasLasTareasDesdeFirestore(
+                db = firestore,
+                groupId = groupId, // Pasa el groupId aquí
+                onSuccess = { tareas ->
+                    todasLasTareas = tareas
+                    isLoading = false
+                },
+                onFailure = {
+                    isLoading = false
+                    Log.e("ProgramarScreen", "Error al cargar tareas")
+                }
+            )
+        } else {
+            isLoading = false
+            Log.e("ProgramarScreen", "GroupId está vacío")
+        }
     }
 
     // Fondo aplicado a toda la pantalla
@@ -176,6 +186,7 @@ fun ProgramarScreen(navController: NavHostController) {
                         Button(onClick = {
                             actualizarFrecuencia(
                                 db = firestore,
+                                groupId = groupId, // Pasa el groupId aquí
                                 tarea = tareaSeleccionada,
                                 nuevaFrecuencia = "Diaria",
                                 onCompletion = { tareas ->
@@ -190,6 +201,7 @@ fun ProgramarScreen(navController: NavHostController) {
                         Button(onClick = {
                             actualizarFrecuencia(
                                 db = firestore,
+                                groupId = groupId, // Pasa el groupId aquí
                                 tarea = tareaSeleccionada,
                                 nuevaFrecuencia = "Semanal",
                                 onCompletion = { tareas ->
@@ -204,6 +216,7 @@ fun ProgramarScreen(navController: NavHostController) {
                         Button(onClick = {
                             actualizarFrecuencia(
                                 db = firestore,
+                                groupId = groupId, // Pasa el groupId aquí
                                 tarea = tareaSeleccionada,
                                 nuevaFrecuencia = "Mensual",
                                 onCompletion = { tareas ->
@@ -218,6 +231,7 @@ fun ProgramarScreen(navController: NavHostController) {
                         Button(onClick = {
                             actualizarFrecuencia(
                                 db = firestore,
+                                groupId = groupId, // Pasa el groupId aquí
                                 tarea = tareaSeleccionada,
                                 nuevaFrecuencia = null,
                                 onCompletion = { tareas ->
@@ -243,11 +257,13 @@ fun ProgramarScreen(navController: NavHostController) {
 
 fun cargarTodasLasTareasDesdeFirestore(
     db: FirebaseFirestore,
+    groupId: String, // Nuevo parámetro para identificar el grupo
     onSuccess: (List<Tarea>) -> Unit,
     onFailure: (Exception) -> Unit
 ) {
-    db.collection("MisTareas")
-        .get() // Ya no filtra por zona
+    // Referencia a la subcolección "mistareas" dentro del grupo
+    db.collection("grupos").document(groupId).collection("mistareas")
+        .get()
         .addOnSuccessListener { result ->
             val listaTareas = result.mapNotNull { document ->
                 val nombre = document.getString("nombre") ?: return@mapNotNull null
@@ -257,10 +273,10 @@ fun cargarTodasLasTareasDesdeFirestore(
                 val subzona = document.getString("subzona") ?: "Sin Subzona" // Traemos la subzona
                 Tarea(nombre, puntos, zona, frecuencia, subzona) // Asegúrate de que subzona esté en Tarea
             }
-            onSuccess(listaTareas)
+            onSuccess(listaTareas) // Devuelve la lista de tareas
         }
         .addOnFailureListener { exception ->
-            onFailure(exception)
+            onFailure(exception) // Maneja cualquier error
         }
 }
 
@@ -349,14 +365,15 @@ fun actualizarFrecuencia(db: FirebaseFirestore, tarea: Tarea?, nuevaFrecuencia: 
 
 fun actualizarFrecuencia(
     db: FirebaseFirestore,
+    groupId: String, // Agregado para identificar el grupo
     tarea: Tarea?,
     nuevaFrecuencia: String?,
     onCompletion: (List<Tarea>) -> Unit // Callback para recargar las tareas
 ) {
     if (tarea == null) return
 
-    db.collection("MisTareas")
-        .whereEqualTo("nombre", tarea.nombre) // Ajusta según tu esquema
+    db.collection("grupos").document(groupId).collection("mistareas") // Ajusta la referencia al grupo y subcolección
+        .whereEqualTo("nombre", tarea.nombre) // Filtra por el nombre de la tarea
         .get()
         .addOnSuccessListener { result ->
             if (result.isEmpty) return@addOnSuccessListener
@@ -365,10 +382,13 @@ fun actualizarFrecuencia(
             docRef.update("frecuencia", nuevaFrecuencia)
                 .addOnSuccessListener {
                     // Recargar todas las tareas tras la actualización
-                    cargarTodasLasTareasDesdeFirestore(db, onCompletion, {})
+                    cargarTodasLasTareasDesdeFirestore(db, groupId, onCompletion, {})
                 }
                 .addOnFailureListener {
                     Log.e("Firestore", "Error al actualizar la frecuencia", it)
                 }
+        }
+        .addOnFailureListener {
+            Log.e("Firestore", "Error al buscar la tarea", it)
         }
 }

@@ -1,5 +1,6 @@
 package com.cleanly
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -17,8 +18,9 @@ fun MostrarTareasFiltradas(
     tareas: List<Tarea>,
     onTareaClick: (Tarea) -> Unit,
     mostrarAsignado: Boolean,
-    onCompletarTarea: ((Tarea) -> Unit)? = null,
-    onAsignarTarea: ((Tarea) -> Unit)? = null
+    nombresUsuarios: Map<String, String>,
+    onAsignarTarea: ((Tarea) -> Unit)? = null,
+    onCompletarTarea: ((Tarea) -> Unit)? = null
 ) {
     LazyColumn(
         modifier = Modifier
@@ -27,12 +29,18 @@ fun MostrarTareasFiltradas(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         items(tareas) { tarea ->
+            val nombreUsuario = nombresUsuarios[tarea.usuario] ?: tarea.usuario ?: "Sin asignar"
+            val nombreCompletadoPor = nombresUsuarios[tarea.completadoPor] ?: tarea.completadoPor ?: "No completado"
+
             TareaItem(
-                tarea = tarea,
+                tarea = tarea.copy(
+                    usuario = nombreUsuario,
+                    completadoPor = nombreCompletadoPor
+                ),
                 onClick = onTareaClick,
                 mostrarAsignado = mostrarAsignado,
-                onCompletarTarea = onCompletarTarea,
-                onAsignarTarea = onAsignarTarea
+                onAsignarTarea = onAsignarTarea,
+                onCompletarTarea = onCompletarTarea
             )
         }
     }
@@ -43,8 +51,8 @@ fun TareaItem(
     tarea: Tarea,
     onClick: (Tarea) -> Unit,
     mostrarAsignado: Boolean = true,
-    onCompletarTarea: ((Tarea) -> Unit)? = null, // Cambiado a ((Tarea) -> Unit)?
-    onAsignarTarea: ((Tarea) -> Unit)? = null   // Cambiado a ((Tarea) -> Unit)?
+    onCompletarTarea: ((Tarea) -> Unit)? = null,
+    onAsignarTarea: ((Tarea) -> Unit)? = null
 ) {
     var mostrarDialogoCompletar by remember { mutableStateOf(false) }
     var mostrarDialogoAsignar by remember { mutableStateOf(false) }
@@ -73,6 +81,7 @@ fun TareaItem(
             )
 
             if (mostrarAsignado && !tarea.usuario.isNullOrEmpty()) {
+                // Usa el valor actual de tarea.usuario, que debería ser el nombre ya traducido
                 Text(
                     text = tarea.usuario,
                     color = Color.Yellow
@@ -86,7 +95,7 @@ fun TareaItem(
             onDismissRequest = { mostrarDialogoCompletar = false },
             confirmButton = {
                 Button(onClick = {
-                    onCompletarTarea?.invoke(tarea) // Pasar la tarea como parámetro
+                    onCompletarTarea?.invoke(tarea)
                     mostrarDialogoCompletar = false
                 }) {
                     Text("Sí")
@@ -106,7 +115,7 @@ fun TareaItem(
             onDismissRequest = { mostrarDialogoAsignar = false },
             confirmButton = {
                 Button(onClick = {
-                    onAsignarTarea?.invoke(tarea) // Pasar la tarea como parámetro
+                    onAsignarTarea?.invoke(tarea)
                     mostrarDialogoAsignar = false
                 }) {
                     Text("Sí")

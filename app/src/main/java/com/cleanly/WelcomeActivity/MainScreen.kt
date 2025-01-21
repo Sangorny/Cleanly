@@ -43,6 +43,8 @@ fun MainScreen(
     var grupoIdLoaded by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(true) } // Controla la pantalla de carga
     var navigationTriggered by remember { mutableStateOf(false) }
+    val nombresUsuarios = remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+
 
     // Mostrar pantalla de carga mientras isLoading es true
     if (isLoading) {
@@ -79,11 +81,33 @@ fun MainScreen(
                             userDocRef.get()
                                 .addOnSuccessListener { userDoc ->
                                     if (userDoc.exists()) {
+                                        // Usuario encontrado, guarda el groupId
                                         groupId = grupoDoc.getString("id") ?: grupoDoc.id
-                                        Log.d(
-                                            "MainScreen",
-                                            "Usuario encontrado en el grupo: $groupId"
-                                        )
+                                        Log.d("MainScreen", "Usuario encontrado en el grupo: $groupId")
+
+                                        // Cargar todos los usuarios del grupo
+                                        grupoDoc.reference.collection("usuarios").get()
+                                            .addOnSuccessListener { usuariosSnapshot ->
+                                                val nuevosNombres = mutableMapOf<String, String>()
+                                                usuariosSnapshot.documents.forEach { usuarioDoc ->
+                                                    val uid = usuarioDoc.id
+                                                    val nombre = usuarioDoc.getString("nombre")
+                                                    if (!uid.isNullOrEmpty() && !nombre.isNullOrEmpty()) {
+                                                        nuevosNombres[uid] = nombre
+                                                    }
+                                                }
+                                                nombresUsuarios.value = nuevosNombres.toMap()
+                                                Log.d(
+                                                    "MainScreen",
+                                                    "Usuarios del grupo cargados: $nuevosNombres"
+                                                )
+                                            }
+                                            .addOnFailureListener { exception ->
+                                                Log.e(
+                                                    "MainScreen",
+                                                    "Error al cargar usuarios del grupo: ${exception.message}"
+                                                )
+                                            }
                                     }
                                 }
                                 .addOnFailureListener { exception ->
@@ -179,8 +203,12 @@ fun MainScreen(
                             // Navegar a 'zonas' sin el groupId en la URL
                             navController.navigate("zonas")
                         }
+
                         "Estadísticas" -> navController.navigate("estadisticas")
-                        "Programar" -> navController.navigate("programar")
+                        "Programar" -> {
+
+                            navController.navigate("programar")
+                        }
                     }
                 }
             }
@@ -192,10 +220,12 @@ fun MainScreen(
                 modifier = Modifier.padding(paddingValues)
             ) {
                 composable("welcome") {
+                    val safeGroupId = groupId ?: ""
                     Welcome(
                         navController = navController,
-                        onTareaClick = onNavigateToTarea,
-                        groupId = groupId.orEmpty() // Pasar el groupId
+                        onTareaClick = { /* Lógica aquí */ },
+                        groupId = safeGroupId,
+                        nombresUsuarios = nombresUsuarios.value // Pasar nombres desde MainScreen
                     )
                 }
 
@@ -253,7 +283,11 @@ fun MainScreen(
                     EstadisticasScreen(navController = navController)
                 }
                 composable("programar") {
-                    ProgramarScreen(navController = navController)
+                    val safeGroupId = groupId ?: ""
+                    ProgramarScreen(
+                        navController = navController,
+                        groupId = safeGroupId // Pasar el groupId directamente
+                    )
                 }
 
                 composable("zonas") {
@@ -266,29 +300,6 @@ fun MainScreen(
                         }
                     )
                 }
-
-               /* composable(
-                    route = "zonas/{groupId}",
-                    arguments = listOf(
-                        navArgument("groupId") { type = NavType.StringType }
-                    )
-                ) { backStackEntry ->
-                    val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
-
-                    if (groupId.isNotEmpty()) {
-                        Zonas(groupId = groupId) { zoneName ->
-                            navController.navigate("tarea?zona=$zoneName&groupId=$groupId")
-                        }
-                    } else {
-                        Log.e("NavHost", "groupId está vacío. Verifica la navegación.")
-                        Toast.makeText(
-                            context,
-                            "Error al cargar las zonas: groupId no encontrado.",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                }*/
-
 
                 composable(
                     route = "tarea?zona={zona}&groupId={groupId}",
