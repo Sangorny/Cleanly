@@ -22,12 +22,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.firestore.FirebaseFirestore
 
+
+
 data class Tarea(
     val nombre: String,
     val puntos: Int,
     val zona: String,
     val subzona: String = "Sin Subzona",
-    var isChecked: Boolean = false
+    val prioridad: String = "Baja", // Valor predeterminado
+    val usuario: String = "", // UID del usuario asignado (vacío si no está asignada)
+    var isChecked: Boolean = false,
 )
 
 @Composable
@@ -41,6 +45,8 @@ fun CRUDTareas(
     onTaskListUpdated: (List<Tarea>) -> Unit,
     groupId: String,
     zonaSeleccionada: String,
+    nombresUsuarios: Map<String, String>,
+    isAdmin: Boolean
 ) {
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -53,6 +59,9 @@ fun CRUDTareas(
     var nombreOriginal by remember { mutableStateOf("") }
     var taskSubzona by remember { mutableStateOf("") }
     var selectedPriority by remember { mutableStateOf("Baja") }
+    var tareaParaAsignar by remember { mutableStateOf<Tarea?>(null) }
+    var showAsignarDialog by remember { mutableStateOf(false) }
+    var usuarioSeleccionado by remember { mutableStateOf("") }
 
 
     // Función para agregar una tarea
@@ -90,7 +99,7 @@ fun CRUDTareas(
 
     // Función para cargar tareas
     fun cargarTareasDesdeFirestore(
-        groupId: String, // Se incluye el groupId como parámetro
+        groupId: String,
         zonaSeleccionada: String,
         onSuccess: (List<Tarea>) -> Unit,
         onFailure: (Exception) -> Unit = {}
@@ -114,7 +123,9 @@ fun CRUDTareas(
                     val nombre = document.getString("nombre") ?: return@mapNotNull null
                     val puntos = document.getLong("puntos")?.toInt() ?: return@mapNotNull null
                     val subzona = document.getString("subzona") ?: "Sin Subzona"
-                    Tarea(nombre, puntos, zonaSeleccionada, subzona)
+                    val prioridad = document.getString("prioridad") ?: "Baja" // Obtén la prioridad
+                    val usuario = document.getString("usuario") ?: "" // Obtén el usuario asignado o valor predeterminado
+                    Tarea(nombre, puntos, zonaSeleccionada, subzona, prioridad, usuario) // Incluye usuario
                 }
                 onSuccess(listaTareas) // Llamar al callback de éxito con las tareas cargadas
             }
@@ -187,6 +198,39 @@ fun CRUDTareas(
                 }
         }
     }
+
+    fun asignarTarea(tarea: Tarea, usuarioId: String) {
+        db.collection("grupos")
+            .document(groupId)
+            .collection("mistareas")
+            .whereEqualTo("nombre", tarea.nombre) // Busca directamente por el nombre
+            .get()
+            .addOnSuccessListener { querySnapshot ->
+                if (querySnapshot.isEmpty) {
+                    showSnackbarMessage = "No se encontró la tarea con el nombre '${tarea.nombre}'."
+                } else {
+                    val documentRef = querySnapshot.documents.first().reference
+                    documentRef.update("usuario", usuarioId) // Actualiza o crea el campo "usuario"
+                        .addOnSuccessListener {
+                            showSnackbarMessage = "Tarea '${tarea.nombre}' asignada a ${nombresUsuarios[usuarioId]}"
+                        }
+                        .addOnFailureListener {
+                            showSnackbarMessage = "Error al asignar la tarea"
+                        }
+                }
+            }
+            .addOnFailureListener { exception ->
+                showSnackbarMessage = "Error al buscar la tarea: ${exception.message}"
+            }
+    }
+
+    fun showAsignarDialog(tarea: Tarea) {
+        tareaParaAsignar = tarea
+        showAsignarDialog = true
+    }
+
+
+
 
     val handleCreate = {
         if (taskName.isNotBlank() && taskPoints.isNotBlank()) {
@@ -272,6 +316,21 @@ fun CRUDTareas(
         }
     }
 
+    val handleAsignar = {
+        val tareasSeleccionadas = taskList.filter { tarea -> checkedStates[tarea.nombre] == true }
+        if (tareasSeleccionadas.size != 1) {
+            showSnackbarMessage = if (tareasSeleccionadas.isEmpty()) {
+                "Selecciona una tarea para asignar"
+            } else {
+                "Solo puedes asignar una tarea a la vez"
+            }
+        } else {
+            val tareaSeleccionada = tareasSeleccionadas.first()
+            showAsignarDialog(tareaSeleccionada)
+        }
+    }
+
+
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { paddingValues ->
@@ -299,22 +358,31 @@ fun CRUDTareas(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            VisualBoton(
-                onCreate = { showDialog = true }, // Activa el cuadro de diálogo
-                onEdit = handleEdit,
-                onDelete = handleDelete,
-                onList = { /*cargarTareasDesdeFirestore(zonaSeleccionada, onTaskListUpdated)*/ }
-            )
+            if (isAdmin) {
+                VisualBoton(
+                    onCreate = { showDialog = true }, // Activa el cuadro de diálogo
+                    onEdit = handleEdit,
+                    onDelete = handleDelete,
+                    onList = { /* lógica para listar tareas */ },
+                    onAsignar = handleAsignar
+                )
+
+                Spacer(modifier = Modifier.height(16.dp)) // Espaciador adicional si es necesario
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
             taskList.forEach { tarea ->
                 TaskRow(
                     task = tarea.nombre,
-                    puntos = tarea.puntos,
                     subzona = tarea.subzona,
+                    prioridad = tarea.prioridad, // Asegúrate de que esta propiedad exista en el modelo
+                    asignadoA = nombresUsuarios[tarea.usuario],
+                    puntos = tarea.puntos,
                     isChecked = checkedStates[tarea.nombre] ?: false,
-                    onCheckedChange = { isChecked -> checkedStates[tarea.nombre] = isChecked }
+                    onCheckedChange = { isChecked ->
+                        checkedStates[tarea.nombre] = isChecked
+                    }
                 )
             }
 
@@ -373,15 +441,52 @@ fun CRUDTareas(
                     }
                 )
             }
+            if (showAsignarDialog && tareaParaAsignar != null) {
+                AlertDialog(
+                    onDismissRequest = { showAsignarDialog = false },
+                    title = { Text("Asignar Tarea") },
+                    text = {
+                        Column {
+                            Text("Selecciona un usuario para la tarea: ${tareaParaAsignar!!.nombre}")
+                            Spacer(modifier = Modifier.height(8.dp))
+                            DropdownUsuarios(
+                                nombresUsuarios = nombresUsuarios,
+                                selectedUser = usuarioSeleccionado,
+                                onUserSelected = { usuarioSeleccionado = it }
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        Button(onClick = {
+                            if (usuarioSeleccionado.isNotEmpty()) {
+                                asignarTarea(tareaParaAsignar!!, usuarioSeleccionado)
+                                showAsignarDialog = false
+                            } else {
+                                Toast.makeText(context, "Selecciona un usuario", Toast.LENGTH_SHORT).show()
+                            }
+                        }) {
+                            Text("Asignar")
+                        }
+                    },
+                    dismissButton = {
+                        Button(onClick = { showAsignarDialog = false }) {
+                            Text("Cancelar")
+                        }
+                    }
+                )
+            }
         }
     }
 }
 
+
 @Composable
 fun TaskRow(
     task: String,
-    puntos: Int,
     subzona: String?,
+    prioridad: String,
+    asignadoA: String?,
+    puntos: Int,
     isChecked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
@@ -390,16 +495,20 @@ fun TaskRow(
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .background(Color.LightGray.copy(alpha = 0.3f))
-            .padding(16.dp),
+            .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
+        // Columna izquierda: Nombre y subzona
         Column(modifier = Modifier.weight(1f)) {
+            // Nombre de la tarea
             Text(
                 text = task,
                 fontWeight = FontWeight.Bold,
                 style = TextStyle(fontSize = 14.sp, color = Color.White)
             )
+
+            // Subzona
             if (!subzona.isNullOrEmpty() && subzona != "Sin Subzona") {
                 Text(
                     text = "Subzona: $subzona",
@@ -408,22 +517,67 @@ fun TaskRow(
             }
         }
 
-        Text(
-            text = "$puntos puntos",
-            style = TextStyle(fontSize = 12.sp, color = Color.White)
-        )
+        // Columna central: Gestión y prioridad
+        Column(
+            modifier = Modifier.weight(1f),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            // Nombre de quien lo gestiona
+            if (!asignadoA.isNullOrEmpty()) {
+                Text(
+                    text = "$asignadoA",
+                    fontWeight = FontWeight.Bold,
+                    style = TextStyle(fontSize = 14.sp, color = Color.Yellow)
+                )
+            }
 
-        Checkbox(
-            checked = isChecked,
-            onCheckedChange = onCheckedChange,
-            colors = CheckboxDefaults.colors(
-                checkedColor = Color.Green,
-                uncheckedColor = Color.White
+            // Prioridad con colores
+            Text(
+                text = prioridad,
+                style = TextStyle(
+                    fontSize = 12.sp,
+                    color = when (prioridad) {
+                        "Baja" -> Color.Green
+                        "Media" -> Color(0xFFFFA500) // Naranja
+                        "Urgente" -> Color.Red
+                        else -> Color.Gray
+                    },
+                    fontWeight = FontWeight.Bold
+                )
             )
-        )
+        }
+
+        // Columna derecha: Puntos y checkbox
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween, // Asegura el espacio entre los elementos
+            modifier = Modifier.weight(1f)
+        ) {
+            // Puntos
+            Text(
+                text = "$puntos pts",
+                style = TextStyle(fontSize = 12.sp, color = Color.White),
+                modifier = Modifier.weight(1f) // Empuja el texto hacia la derecha
+            )
+
+            // Espacio entre puntos y checkbox
+            Spacer(modifier = Modifier.width(8.dp)) // Ajusta el espacio según tu preferencia
+
+            // Checkbox más pequeño
+            Checkbox(
+                checked = isChecked,
+                onCheckedChange = onCheckedChange,
+                colors = CheckboxDefaults.colors(
+                    checkedColor = Color.Green,
+                    uncheckedColor = Color.White
+                ),
+                modifier = Modifier.size(12.dp) // Tamaño reducido
+            )
+        }
     }
-    Spacer(modifier = Modifier.height(8.dp))
 }
+
 
 @Composable
 fun DropdownPrioridad(
@@ -455,6 +609,36 @@ fun DropdownPrioridad(
                     onClick = {
                         onPriorityChange(priority) // Notifica el cambio al padre
                         expanded = false // Cierra el menú
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun DropdownUsuarios(
+    nombresUsuarios: Map<String, String>,
+    selectedUser: String,
+    onUserSelected: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+        OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
+            Text(text = nombresUsuarios[selectedUser] ?: "Selecciona un usuario")
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            nombresUsuarios.forEach { (uid, nombre) ->
+                DropdownMenuItem(
+                    text = { Text(nombre) },
+                    onClick = {
+                        onUserSelected(uid)
+                        expanded = false
                     }
                 )
             }

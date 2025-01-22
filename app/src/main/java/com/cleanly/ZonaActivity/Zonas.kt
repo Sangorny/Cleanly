@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.Font
@@ -108,9 +109,10 @@ fun ZoneGrid(
                 Image(
                     painter = painterResource(id = imageRes),
                     contentDescription = null,
+                    contentScale = ContentScale.Crop, // Ajusta la imagen para llenar el espacio
                     modifier = Modifier
                         .fillMaxSize()
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(8.dp)) // Mantén o elimina esto según tus necesidades
                 )
 
                 Text(

@@ -13,7 +13,8 @@ fun VisualBoton(
     onCreate: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
-    onList: () -> Unit
+    onList: () -> Unit,
+    onAsignar: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -22,16 +23,19 @@ fun VisualBoton(
         horizontalArrangement = Arrangement.SpaceAround
     ) {
         Button(onClick = onCreate, modifier = Modifier.weight(1f)) {
-            Text("Agregar", fontSize = 16.sp)
+            Text("Agregar", fontSize = 11.sp)
         }
-        Spacer(modifier = Modifier.width(4.dp))
+        Spacer(modifier = Modifier.width(3.dp))
         Button(onClick = onDelete, modifier = Modifier.weight(1f)) {
-            Text("Borrar", fontSize = 16.sp)
+            Text("Borrar", fontSize = 12.sp)
         }
-        Spacer(modifier = Modifier.width(4.dp))
+        Spacer(modifier = Modifier.width(3.dp))
         Button(onClick = onEdit, modifier = Modifier.weight(1f)) {
-            Text("Editar", fontSize = 16.sp)
+            Text("Editar", fontSize = 12.sp)
         }
-
+        Spacer(modifier = Modifier.width(3.dp))
+        Button(onClick = onAsignar, modifier = Modifier.weight(1f)) {
+            Text("Asignar", fontSize = 11.sp)
+        }
     }
 }

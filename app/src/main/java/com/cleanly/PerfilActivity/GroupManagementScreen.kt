@@ -178,15 +178,46 @@ fun ConfirmationDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     )
 }
 
+
 @Composable
 fun MemberListDialog(members: List<String>, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Miembros del grupo") },
         text = {
-            Column {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(Color.White, Color.LightGray)
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .padding(8.dp)
+            ) {
                 members.forEach { member ->
-                    Text(member, fontSize = 16.sp, color = Color.Black)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(Color.White, Color.LightGray)
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .padding(8.dp)
+                            .align(Alignment.CenterHorizontally)
+                    ) {
+                        Text(
+                            text = member,
+                            fontSize = 16.sp,
+                            color = Color.Black,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
         },

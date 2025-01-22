@@ -44,7 +44,7 @@ fun MainScreen(
     var isLoading by remember { mutableStateOf(true) } // Controla la pantalla de carga
     var navigationTriggered by remember { mutableStateOf(false) }
     val nombresUsuarios = remember { mutableStateOf<Map<String, String>>(emptyMap()) }
-
+    var isAdmin by remember { mutableStateOf(false) }
 
     // Mostrar pantalla de carga mientras isLoading es true
     if (isLoading) {
@@ -83,8 +83,9 @@ fun MainScreen(
                                     if (userDoc.exists()) {
                                         // Usuario encontrado, guarda el groupId
                                         groupId = grupoDoc.getString("id") ?: grupoDoc.id
-                                        Log.d("MainScreen", "Usuario encontrado en el grupo: $groupId")
-
+                                        // Verifica el rol del usuario actual
+                                        val rol = userDoc.getString("rol")
+                                        isAdmin = rol == "administrador" // Determina si es administrador
                                         // Cargar todos los usuarios del grupo
                                         grupoDoc.reference.collection("usuarios").get()
                                             .addOnSuccessListener { usuariosSnapshot ->
@@ -97,24 +98,12 @@ fun MainScreen(
                                                     }
                                                 }
                                                 nombresUsuarios.value = nuevosNombres.toMap()
-                                                Log.d(
-                                                    "MainScreen",
-                                                    "Usuarios del grupo cargados: $nuevosNombres"
-                                                )
                                             }
                                             .addOnFailureListener { exception ->
-                                                Log.e(
-                                                    "MainScreen",
-                                                    "Error al cargar usuarios del grupo: ${exception.message}"
-                                                )
                                             }
                                     }
                                 }
                                 .addOnFailureListener { exception ->
-                                    Log.e(
-                                        "MainScreen",
-                                        "Error al buscar usuario en grupo: ${exception.message}"
-                                    )
                                 }
                                 .addOnCompleteListener {
                                     gruposProcesados++
@@ -125,15 +114,10 @@ fun MainScreen(
                                 }
                         }
                     }.addOnFailureListener { exception ->
-                        Log.e("MainScreen", "Error al cargar grupos: ${exception.message}")
                         grupoIdLoaded = true
                         isLoading = false
                     }
                 } else {
-                    Log.e(
-                        "MainScreen",
-                        "Error al recargar usuario: ${reloadTask.exception?.message}"
-                    )
                     grupoIdLoaded = true
                     isLoading = false
                 }
@@ -317,11 +301,15 @@ fun MainScreen(
                     TareaScreen(
                         navController = navController,
                         zonaSeleccionada = zona,
-                        groupId = groupId
+                        groupId = groupId,
+                        nombresUsuarios = nombresUsuarios.value, // Pasa nombresUsuarios aquí
+                        isAdmin = isAdmin // Pasa isAdmin aquí
                     )
                 }
-
             }
+
+
+
         }
     }
 }

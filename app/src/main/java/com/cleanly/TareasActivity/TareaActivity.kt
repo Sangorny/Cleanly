@@ -42,7 +42,12 @@ class TareaActivity : ComponentActivity() {
 
 
 @Composable
-fun TareaScreen(navController: NavHostController, groupId: String, zonaSeleccionada: String) {
+fun TareaScreen(navController: NavHostController,
+                groupId: String,
+                zonaSeleccionada: String,
+                nombresUsuarios: Map<String, String>,
+                isAdmin: Boolean)
+{
     val db = FirebaseFirestore.getInstance()
     val taskList = remember { mutableStateListOf<Tarea>() }
     val updateTaskList: (List<Tarea>) -> Unit = { newList ->
@@ -100,7 +105,9 @@ fun TareaScreen(navController: NavHostController, groupId: String, zonaSeleccion
                 onEdit = { reloadTaskList(db, groupId, zonaSeleccionada, updateTaskList) },
                 onTaskListUpdated = updateTaskList,
                 groupId = groupId,
-                zonaSeleccionada = zonaSeleccionada
+                zonaSeleccionada = zonaSeleccionada,
+                nombresUsuarios = nombresUsuarios,
+                isAdmin = isAdmin
             )
         }
     }

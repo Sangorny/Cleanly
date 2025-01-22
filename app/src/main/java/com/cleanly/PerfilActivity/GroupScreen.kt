@@ -19,12 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
-import com.cleanly.MainActivity
 import com.cleanly.WelcomActivity
-import com.cleanly.WelcomeActivity.WelcomeDownBar
-import com.cleanly.WelcomeActivity.WelcomeTopBar
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 
 
@@ -326,4 +321,3 @@ fun generateUniqueId(): String {
     val charset = ('A'..'F') + ('0'..'9') // Usamos caracteres hexadecimales
     return "#" + List(6) { charset.random() }.joinToString("")
 }
-
