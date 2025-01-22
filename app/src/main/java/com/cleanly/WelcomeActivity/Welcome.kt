@@ -82,7 +82,7 @@ fun Welcome(
                             .padding(16.dp)
                     ) {
                         Text(
-                            text = "Tareas - $groupId",
+                            text = "Tareas",
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White

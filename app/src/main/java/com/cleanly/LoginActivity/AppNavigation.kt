@@ -14,7 +14,6 @@ import com.google.firebase.firestore.FirebaseFirestore
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.cleanly.PerfilActivity.GroupManagementScreen
@@ -25,7 +24,9 @@ import com.cleanly.PerfilActivity.GroupScreen
 fun AppNavigation() {
     val navController = rememberNavController()
 
-    NavHost(navController = navController, startDestination = "splash") {
+    NavHost(navController = navController, startDestination = ("splash")) {
+
+
         // Pantalla Splash
         composable("splash") {
             SplashScreen(navController = navController)
@@ -36,13 +37,16 @@ fun AppNavigation() {
             RegisterScreen(navController = navController)
         }
 
+        composable("check_authentication") {
+            CheckAuthentication(navController = navController)
+        }
 
         // Pantalla Login
         composable("login") {
             LoginScreen(
                 navController = navController,
                 onLoginSuccess = {
-                    navController.navigate("waiting_screen") {
+                    navController.navigate("main_screen?zonaSeleccionada=null") {
                         popUpTo("login") { inclusive = true }
                         launchSingleTop = true
                     }
@@ -50,26 +54,25 @@ fun AppNavigation() {
             )
         }
 
-        // Pantalla Welcome
-      /*  composable(
-            route = "welcome/{groupId}",
+        composable(
+            route = "main_screen?zonaSeleccionada={zonaSeleccionada}",
             arguments = listOf(
-                navArgument("groupId") { type = NavType.StringType }
+                navArgument("zonaSeleccionada") {
+                    type = NavType.StringType
+                    nullable = true // Permitir que sea null
+                    defaultValue = null // Valor por defecto null
+                }
             )
         ) { backStackEntry ->
-            val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
-
-            Welcome(
-                navController = navController,
-                onTareaClick = { tarea ->
-                    navController.navigate("mis_tareas") {
-                        popUpTo("welcome") { inclusive = false }
-                        launchSingleTop = true
-                    }
-                },
-                groupId = groupId // Pasar el groupId al Composable
+            val zonaSeleccionada = backStackEntry.arguments?.getString("zonaSeleccionada")
+            MainScreen(
+                onNavigateToTarea = null, // Pasar null si no se necesita callback
+                onNavigateToZonas = null, // Pasar null si no se necesita callback
+                zonaSeleccionada = zonaSeleccionada
             )
-        }*/
+        }
+
+
 
         // Otras pantallas
         composable("mis_tareas") {

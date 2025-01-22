@@ -28,8 +28,8 @@ import com.google.firebase.firestore.FirebaseFirestore
 
 @Composable
 fun MainScreen(
-    onNavigateToTarea: (Tarea) -> Unit,
-    onNavigateToZonas: () -> Unit,
+    onNavigateToTarea: ((Tarea) -> Unit)? = null, // Callback opcional
+    onNavigateToZonas: (() -> Unit)? = null, // Callback opcional
     zonaSeleccionada: String? = null // Parámetro opcional
 ) {
     val navController = rememberNavController()
@@ -279,9 +279,15 @@ fun MainScreen(
                         }
                     )
                 }
+
                 composable("estadisticas") {
-                    EstadisticasScreen(navController = navController)
+                    val safeGroupId = groupId ?: ""
+                    EstadisticasScreen(
+                        navController = navController,
+                        groupId = safeGroupId // Pasar el groupId directamente
+                    )
                 }
+
                 composable("programar") {
                     val safeGroupId = groupId ?: ""
                     ProgramarScreen(

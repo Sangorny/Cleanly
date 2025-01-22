@@ -2,6 +2,9 @@ package com.cleanly
 
 import android.content.Context
 import android.widget.Toast
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.userProfileChangeRequest
@@ -64,7 +67,59 @@ fun createAccount(email: String, password: String, nick: String, context: Contex
 
 }
 
+@Composable
+fun CheckAuthentication(navController: NavHostController) {
+    val context = LocalContext.current
+    val auth = FirebaseAuth.getInstance()
+    val currentUser = auth.currentUser
 
+    LaunchedEffect(currentUser) {
+        if (currentUser != null) {
+            currentUser.reload().addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    val firestore = FirebaseFirestore.getInstance()
+                    val userId = currentUser.uid
+
+                    // Verifica si el usuario pertenece a un grupo
+                    firestore.collection("grupos")
+                        .whereEqualTo("usuarios.$userId", true)
+                        .get()
+                        .addOnSuccessListener { querySnapshot ->
+                            if (!querySnapshot.isEmpty) {
+                                navController.navigate("main_screen") {
+                                    popUpTo("check_authentication") { inclusive = true }
+                                    launchSingleTop = true
+                                }
+                            } else {
+                                navController.navigate("group_screen/$userId") {
+                                    popUpTo("check_authentication") { inclusive = true }
+                                    launchSingleTop = true
+                                }
+                            }
+                        }
+                        .addOnFailureListener {
+                            Toast.makeText(
+                                context,
+                                "Error al verificar grupos.",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                } else {
+                    Toast.makeText(context, "Autenticación fallida", Toast.LENGTH_SHORT).show()
+                    navController.navigate("login") {
+                        popUpTo("check_authentication") { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
+            }
+        } else {
+            navController.navigate("login") {
+                popUpTo("check_authentication") { inclusive = true }
+                launchSingleTop = true
+            }
+        }
+    }
+}
 
 fun agregarUsuarioAGrupo(
     db: FirebaseFirestore,
