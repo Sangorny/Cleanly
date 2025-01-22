@@ -115,7 +115,10 @@ fun Welcome(
 
                         when (selectedTabIndex) {
                             0 -> MostrarTareasFiltradas(
-                                tareas.filter { it.usuario == FirebaseAuth.getInstance().currentUser?.uid },
+                                tareas.filter {
+                                    it.usuario == FirebaseAuth.getInstance().currentUser?.uid &&
+                                            it.completadoPor.isNullOrEmpty()
+                                },
                                 onTareaClick = { /* No se usa aquí */ },
                                 mostrarAsignado = true,
                                 nombresUsuarios = nombresUsuarios, // Pasar mapa de nombres

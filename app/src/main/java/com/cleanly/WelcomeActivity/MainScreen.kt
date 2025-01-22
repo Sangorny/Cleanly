@@ -282,10 +282,7 @@ fun MainScreen(
 
                 composable("estadisticas") {
                     val safeGroupId = groupId ?: ""
-                    EstadisticasScreen(
-                        navController = navController,
-                        groupId = safeGroupId // Pasar el groupId directamente
-                    )
+                    EstadisticasScreen(navController = navController, groupId = safeGroupId)
                 }
 
                 composable("programar") {
