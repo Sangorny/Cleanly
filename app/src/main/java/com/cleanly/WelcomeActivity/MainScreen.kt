@@ -20,6 +20,7 @@ import com.cleanly.PerfilActivity.GroupManagementScreen
 import com.cleanly.PerfilActivity.GroupScreen
 import com.cleanly.PerfilActivity.LoadingScreen
 import com.cleanly.PerfilActivity.ProfileScreen
+import com.cleanly.ProgramasActivity.programarResetDeTareas
 import com.cleanly.WelcomeActivity.WelcomeTopBar
 import com.cleanly.WelcomeActivity.WelcomeDownBar
 import com.cleanly.shared.Tarea
@@ -45,6 +46,8 @@ fun MainScreen(
     var navigationTriggered by remember { mutableStateOf(false) }
     val nombresUsuarios = remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var isAdmin by remember { mutableStateOf(false) }
+    var workerProgramado by remember { mutableStateOf(false) }
+
 
     // Dentro de MainScreen
     val currentRoute = navController.currentBackStackEntry?.destination?.route
@@ -154,6 +157,14 @@ fun MainScreen(
         }
     }
 
+    LaunchedEffect(isAdmin, groupId) {
+        groupId?.let { safeGroupId ->
+            if (isAdmin && !workerProgramado) {
+                programarResetDeTareas(context, isAdmin, safeGroupId)
+                workerProgramado = true
+            }
+        }
+    }
     // Interfaz principal si isLoading es false
     if (!isLoading) {
         val currentRoute = navController.currentBackStackEntry?.destination?.route
