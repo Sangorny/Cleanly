@@ -234,6 +234,7 @@ fun MainScreen(
                         navController = navController,
                         groupId = groupIdParam, // Usa la variable local
                         userId = userIdParam,
+                        isAdmin = isAdmin,
                         onGroupLeft = {
                             groupId = null // Modifica el estado de MainScreen, no la variable local
                         }

@@ -115,18 +115,19 @@ fun AppNavigation() {
             }
         }
 
-        composable("group_management/{grupoId}") { backStackEntry ->
+    /*    composable("group_management/{grupoId}") { backStackEntry ->
             val grupoIdArg = backStackEntry.arguments?.getString("groupId") ?: ""
             val userId = backStackEntry.arguments?.getString("userId") ?: ""
             GroupManagementScreen(
                 navController = navController,
                 userId = userId,
                 groupId = grupoIdArg,
+                isAdmin = isAdmin,
                 onGroupLeft = {
                     Log.d("Navigation", "El usuario ha dejado el grupo")
                 }
             )
-        }
+        }*/
 
         /*// Navegación para Zonas
         composable(
