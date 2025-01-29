@@ -71,6 +71,7 @@ fun CRUDTareas(
         puntos: Int,
         zona: String,
         subzona: String,
+        prioridad: String,
         context: Context,
         onSuccess: () -> Unit
     ) {
@@ -81,6 +82,7 @@ fun CRUDTareas(
             "puntos" to puntos,
             "zona" to zona,
             "subzona" to subzona,
+            "prioridad" to prioridad,
             "completadoPor" to "",
             "completadoEn" to null
         )
@@ -240,6 +242,7 @@ fun CRUDTareas(
                 puntos = taskPoints.toInt(),
                 zona = zonaSeleccionada,
                 subzona = taskSubzona.ifBlank { "Sin Subzona" },
+                prioridad = selectedPriority,
                 context = context,
                 onSuccess = {
                     showSnackbarMessage = "Tarea añadida correctamente"
@@ -384,6 +387,7 @@ fun CRUDTareas(
                         checkedStates[tarea.nombre] = isChecked
                     }
                 )
+            Spacer(modifier = Modifier.height(16.dp))
             }
 
             // Mostrar Snackbar
