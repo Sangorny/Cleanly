@@ -1,5 +1,7 @@
 package com.cleanly.EstadisticaActivity
 
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -20,6 +22,7 @@ import androidx.navigation.NavHostController
 import com.cleanly.R
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import java.util.*
 import java.util.concurrent.TimeUnit
 
@@ -155,8 +158,8 @@ fun EstadisticasScreen(
     }
 }
 
-fun fetchVictories(groupId: String, firestore: FirebaseFirestore, winnerName: String, onResult: (Int) -> Unit) {
-    val victoriesRef = firestore.collection("grupos").document(groupId).collection("victorias").document(winnerName)
+fun fetchVictories(groupId: String, firestore: FirebaseFirestore, winnerId: String, onResult: (Int) -> Unit) {
+    val victoriesRef = firestore.collection("grupos").document(groupId).collection("victorias").document(winnerId)
 
     victoriesRef.get()
         .addOnSuccessListener { document ->
@@ -169,27 +172,28 @@ fun fetchVictories(groupId: String, firestore: FirebaseFirestore, winnerName: St
         }
 }
 
+
 fun scheduleResetScores(groupId: String, firestore: FirebaseFirestore) {
     val now = Calendar.getInstance()
-    val nextSunday = Calendar.getInstance().apply {
-        set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY)
-        set(Calendar.HOUR_OF_DAY, 23)
-        set(Calendar.MINUTE, 59)
+    val resetTime = Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, 11)
+        set(Calendar.MINUTE, 22)
         set(Calendar.SECOND, 0)
         set(Calendar.MILLISECOND, 0)
         if (timeInMillis <= now.timeInMillis) {
-            add(Calendar.WEEK_OF_YEAR, 1)
+            add(Calendar.DAY_OF_YEAR, 1) // Si ya pasó, lo programa para el siguiente día
         }
     }
 
-    val delay = nextSunday.timeInMillis - now.timeInMillis
+    val delay = resetTime.timeInMillis - now.timeInMillis
 
-    Timer().schedule(object : TimerTask() {
-        override fun run() {
-            resetScores(groupId, firestore)
-        }
+    Log.d("scheduleResetScores", "Puntuaciones se resetearán en $delay ms")
+
+    Handler(Looper.getMainLooper()).postDelayed({
+        resetScores(groupId, firestore)
     }, delay)
 }
+
 
 fun fetchMemberRanking(
     groupId: String,
@@ -198,10 +202,10 @@ fun fetchMemberRanking(
 ) {
     val groupUsersRef = firestore.collection("grupos").document(groupId).collection("usuarios")
     val groupTasksRef = firestore.collection("grupos").document(groupId).collection("mistareas")
-    val groupMetaRef = firestore.collection("grupos").document(groupId)
 
     groupUsersRef.get()
         .addOnSuccessListener { userSnapshots ->
+            val validUserIds = userSnapshots.documents.map { it.id }.toSet() // Obtener solo los IDs de usuarios activos
             val uidToNameMap = userSnapshots.documents.associate {
                 it.id to (it.getString("nombre") ?: "Usuario desconocido")
             }
@@ -214,7 +218,13 @@ fun fetchMemberRanking(
                         val uid = taskDoc.getString("usuario") ?: return@forEach
                         val points = taskDoc.getLong("puntos")?.toInt() ?: 0
 
-                        uidToScoreMap[uid] = uidToScoreMap.getOrDefault(uid, 0) + points
+                        // **Solo incluir si el usuario sigue en el grupo**
+                        if (validUserIds.contains(uid)) {
+                            uidToScoreMap[uid] = uidToScoreMap.getOrDefault(uid, 0) + points
+                        } else {
+                            // **Si el usuario ya no está, eliminar su tarea**
+                            taskDoc.reference.delete()
+                        }
                     }
 
                     val ranking = uidToScoreMap.mapNotNull { (uid, score) ->
@@ -223,41 +233,6 @@ fun fetchMemberRanking(
                     }.sortedByDescending { it.second }
 
                     onResult(ranking)
-
-                    // Reset scores if it's Sunday 23:59
-                    val currentTime = System.currentTimeMillis()
-                    val calendar = Calendar.getInstance().apply {
-                        timeInMillis = currentTime
-                    }
-                    val isSunday = calendar.get(Calendar.DAY_OF_WEEK) == Calendar.SUNDAY
-                    val isResetTime = calendar.get(Calendar.HOUR_OF_DAY) == 23 && calendar.get(Calendar.MINUTE) == 59
-
-                    if (isSunday && isResetTime) {
-                        val topScorerUid = uidToScoreMap.maxByOrNull { it.value }?.key
-                        if (topScorerUid != null) {
-                            groupUsersRef.document(topScorerUid)
-                                .update("victorias", FieldValue.increment(1))
-                                .addOnSuccessListener {
-                                    Log.d("fetchMemberRanking", "Victoria añadida para el usuario: $topScorerUid")
-                                }
-                                .addOnFailureListener { exception ->
-                                    Log.e("fetchMemberRanking", "Error al actualizar victorias: ${exception.message}")
-                                }
-                        }
-
-                        // Reset scores in the database
-                        groupTasksRef.get().addOnSuccessListener { taskDocs ->
-                            for (task in taskDocs) {
-                                task.reference.update("puntos", 0)
-                                    .addOnSuccessListener {
-                                        Log.d("fetchMemberRanking", "Puntuación reiniciada para la tarea: ${task.id}")
-                                    }
-                                    .addOnFailureListener { exception ->
-                                        Log.e("fetchMemberRanking", "Error al reiniciar puntuación: ${exception.message}")
-                                    }
-                            }
-                        }
-                    }
                 }
                 .addOnFailureListener { exception ->
                     Log.e("fetchMemberRanking", "Error al cargar tareas: ${exception.message}")
@@ -270,17 +245,54 @@ fun fetchMemberRanking(
         }
 }
 
-
 fun resetScores(groupId: String, firestore: FirebaseFirestore) {
     val groupUsersRef = firestore.collection("grupos").document(groupId).collection("usuarios")
+    val victoriesRef = firestore.collection("grupos").document(groupId).collection("victorias")
 
     groupUsersRef.get().addOnSuccessListener { userSnapshots ->
+        var topUserId: String? = null
+        var maxPoints = -1
+
+        // Encontrar al usuario con más puntos
         userSnapshots.documents.forEach { userDoc ->
             val userId = userDoc.id
-            val userRef = groupUsersRef.document(userId)
-            userRef.update("puntos", 0)
+            val points = userDoc.getLong("puntos")?.toInt() ?: 0
+
+            if (points > maxPoints) {
+                maxPoints = points
+                topUserId = userId
+            }
+        }
+
+        // Si hay un ganador, incrementar su contador de victorias ANTES de resetear puntos
+        topUserId?.let { winnerId ->
+            val winnerDocRef = victoriesRef.document(winnerId)
+
+            winnerDocRef.get().addOnSuccessListener { document ->
+                val currentVictories = document.getLong("count")?.toInt() ?: 0
+
+                // Incrementar victorias
+                winnerDocRef.set(mapOf("count" to (currentVictories + 1)), SetOptions.merge())
+                    .addOnSuccessListener {
+                        Log.d("resetScores", "Victoria añadida para usuario: $winnerId")
+
+                        // Ahora sí, resetear las puntuaciones
+                        userSnapshots.documents.forEach { userDoc ->
+                            userDoc.reference.update("puntos", 0)
+                                .addOnSuccessListener {
+                                    Log.d("resetScores", "Puntuación reseteada para: ${userDoc.id}")
+                                }
+                                .addOnFailureListener { exception ->
+                                    Log.e("resetScores", "Error al resetear puntuación: ${exception.message}")
+                                }
+                        }
+                    }
+                    .addOnFailureListener { exception ->
+                        Log.e("resetScores", "Error al actualizar victorias: ${exception.message}")
+                    }
+            }
         }
     }.addOnFailureListener {
-        Log.e("EstadisticasScreen", "Error al resetear puntuaciones: ${it.message}")
+        Log.e("resetScores", "Error al resetear puntuaciones: ${it.message}")
     }
 }

@@ -2,7 +2,6 @@ package com.cleanly
 
 import MisTareasScreen
 import android.util.Log
-import android.widget.Toast
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
@@ -122,7 +121,10 @@ fun AppNavigation() {
             GroupManagementScreen(
                 navController = navController,
                 userId = userId,
-                groupId = grupoIdArg
+                groupId = grupoIdArg,
+                onGroupLeft = {
+                    Log.d("Navigation", "El usuario ha dejado el grupo")
+                }
             )
         }
 
@@ -149,24 +151,23 @@ fun AppNavigation() {
             }
         }*/
 
-       /* // Navegación para TareaScreen
-        composable(
-            route = "tarea?zona={zona}&groupId={groupId}",
-            arguments = listOf(
-                navArgument("zona") { type = NavType.StringType; defaultValue = "" },
-                navArgument("groupId") { type = NavType.StringType; defaultValue = "" }
-            )
-        ) { backStackEntry ->
-            val zona = backStackEntry.arguments?.getString("zona") ?: ""
-            val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
+        /* // Navegación para TareaScreen
+         composable(
+             route = "tarea?zona={zona}&groupId={groupId}",
+             arguments = listOf(
+                 navArgument("zona") { type = NavType.StringType; defaultValue = "" },
+                 navArgument("groupId") { type = NavType.StringType; defaultValue = "" }
+             )
+         ) { backStackEntry ->
+             val zona = backStackEntry.arguments?.getString("zona") ?: ""
+             val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
 
-            TareaScreen(
-                navController = navController,
-                zonaSeleccionada = zona,
-                groupId = groupId // Pasar el groupId
-            )
-        }*/
+             TareaScreen(
+                 navController = navController,
+                 zonaSeleccionada = zona,
+                 groupId = groupId // Pasar el groupId
+             )
+         }*/
 
     }
 }
-

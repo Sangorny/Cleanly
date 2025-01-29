@@ -28,9 +28,9 @@ import com.google.firebase.firestore.FirebaseFirestore
 
 @Composable
 fun MainScreen(
-    onNavigateToTarea: ((Tarea) -> Unit)? = null, // Callback opcional
-    onNavigateToZonas: (() -> Unit)? = null, // Callback opcional
-    zonaSeleccionada: String? = null // Parámetro opcional
+    onNavigateToTarea: ((Tarea) -> Unit)? = null,
+    onNavigateToZonas: (() -> Unit)? = null,
+    zonaSeleccionada: String? = null
 ) {
     val navController = rememberNavController()
     val context = LocalContext.current
@@ -41,10 +41,16 @@ fun MainScreen(
     var photoUrl by remember { mutableStateOf(currentUser?.photoUrl) }
     var groupId by remember { mutableStateOf<String?>(null) }
     var grupoIdLoaded by remember { mutableStateOf(false) }
-    var isLoading by remember { mutableStateOf(true) } // Controla la pantalla de carga
+    var isLoading by remember { mutableStateOf(true) }
     var navigationTriggered by remember { mutableStateOf(false) }
     val nombresUsuarios = remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var isAdmin by remember { mutableStateOf(false) }
+
+    // Dentro de MainScreen
+    val currentRoute = navController.currentBackStackEntry?.destination?.route
+
+// Usar startsWith para manejar rutas con parámetros
+    val isInGroupScreen = currentRoute?.startsWith("group_screen") == true
 
     // Mostrar pantalla de carga mientras isLoading es true
     if (isLoading) {
@@ -81,12 +87,9 @@ fun MainScreen(
                             userDocRef.get()
                                 .addOnSuccessListener { userDoc ->
                                     if (userDoc.exists()) {
-                                        // Usuario encontrado, guarda el groupId
                                         groupId = grupoDoc.getString("id") ?: grupoDoc.id
-                                        // Verifica el rol del usuario actual
                                         val rol = userDoc.getString("rol")
-                                        isAdmin = rol == "administrador" // Determina si es administrador
-                                        // Cargar todos los usuarios del grupo
+                                        isAdmin = rol == "administrador"
                                         grupoDoc.reference.collection("usuarios").get()
                                             .addOnSuccessListener { usuariosSnapshot ->
                                                 val nuevosNombres = mutableMapOf<String, String>()
@@ -131,8 +134,8 @@ fun MainScreen(
     LaunchedEffect(grupoIdLoaded, navigationTriggered) {
         if (grupoIdLoaded && !navigationTriggered) {
             navigationTriggered = true
-            if (groupId == null) {
-                Log.d("Navigation", "Redirigiendo a group_screen porque groupId es null")
+            if (groupId == null || groupId == "singrupo") {
+                Log.d("Navigation", "Redirigiendo a group_screen porque groupId es null o singrupo")
                 currentUser?.let {
                     navController.navigate("group_screen/${it.uid}") {
                         popUpTo("main_screen") { inclusive = true }
@@ -153,99 +156,107 @@ fun MainScreen(
 
     // Interfaz principal si isLoading es false
     if (!isLoading) {
+        val currentRoute = navController.currentBackStackEntry?.destination?.route
+
         Scaffold(
             topBar = {
-                if (groupId != null) {
-                    WelcomeTopBar(
-                        photoUrl = photoUrl,
-                        displayName = displayName,
-                        onProfileClick = { navController.navigate("profile") },
-                        onGroupManagementClick = {
-                            if (!groupId.isNullOrEmpty() && currentUser?.uid != null) {
-                                navController.navigate("group_management/$groupId/${currentUser.uid}")
-                            } else {
-                                Toast.makeText(
-                                    context,
-                                    "Datos insuficientes para gestionar el grupo.",
-                                    Toast.LENGTH_SHORT
-                                ).show()
+                groupId?.let { safeGroupId ->
+                    if (groupId != null && currentRoute?.startsWith("group_screen") != true) {
+                        WelcomeTopBar(
+                            photoUrl = photoUrl,
+                            displayName = displayName,
+                            onProfileClick = { navController.navigate("profile") },
+                            onGroupManagementClick = {
+                                navController.navigate("group_management/$safeGroupId/${currentUser?.uid}")
+                            },
+                            onLogoutClick = {
+                                auth.signOut()
+                                val intent = Intent(context, MainActivity::class.java)
+                                context.startActivity(intent)
                             }
-                        },
-                        onLogoutClick = {
-                            auth.signOut()
-                            val intent = Intent(context, MainActivity::class.java)
-                            context.startActivity(intent)
-                        }
-                    )
+                        )
+                    }
                 }
             },
             bottomBar = {
-                WelcomeDownBar { selectedScreen ->
-                    when (selectedScreen) {
-                        "Mis Tareas" -> navController.navigate("welcome")
-                        "Zonas" -> {
-                            // Navegar a 'zonas' sin el groupId en la URL
-                            navController.navigate("zonas")
-                        }
-
-                        "Estadísticas" -> navController.navigate("estadisticas")
-                        "Programar" -> {
-
-                            navController.navigate("programar")
+                groupId?.let { safeGroupId ->
+                    if (groupId != null && currentRoute?.startsWith("group_screen") != true) {
+                        WelcomeDownBar { selectedScreen ->
+                            when (selectedScreen) {
+                                "Mis Tareas" -> navController.navigate("welcome")
+                                "Zonas" -> navController.navigate("zonas")
+                                "Estadísticas" -> navController.navigate("estadisticas")
+                                "Programar" -> navController.navigate("programar")
+                            }
                         }
                     }
                 }
             }
-
         ) { paddingValues ->
             NavHost(
                 navController = navController,
-                startDestination = if (zonaSeleccionada != null) "tarea" else "welcome",
+                startDestination = if (groupId == "singrupo") "group_screen/{userId}" else "welcome",
                 modifier = Modifier.padding(paddingValues)
             ) {
                 composable("welcome") {
-                    val safeGroupId = groupId ?: ""
-                    Welcome(
-                        navController = navController,
-                        onTareaClick = { /* Lógica aquí */ },
-                        groupId = safeGroupId,
-                        nombresUsuarios = nombresUsuarios.value // Pasar nombres desde MainScreen
-                    )
+                    groupId?.let { safeGroupId ->
+                        if (safeGroupId != "singrupo") {
+                            Welcome(
+                                navController = navController,
+                                onTareaClick = { /* Aquí puedes manejar la lógica al hacer clic en una tarea */ },
+                                groupId = safeGroupId,
+                                nombresUsuarios = nombresUsuarios.value
+                            )
+                        } else {
+                            navController.navigate("group_screen/${currentUser?.uid ?: ""}")
+                        }
+                    }
                 }
+
 
                 composable("group_screen/{userId}") { backStackEntry ->
                     val userId = backStackEntry.arguments?.getString("userId") ?: ""
-                    GroupScreen(
-                        navController = navController,
-                        userId = userId,
-
-                        )
+                    GroupScreen(navController = navController, userId = userId)
                 }
 
-                // Ruta hacia GroupManagementScreen
                 composable(
-                    route = "group_management/{groupId}/{userId}",
+                    route = "group_management/{groupId}/{userId}", // Usa llaves {}, no paréntesis
                     arguments = listOf(
                         navArgument("groupId") { type = NavType.StringType },
                         navArgument("userId") { type = NavType.StringType }
                     )
                 ) { backStackEntry ->
-                    val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
-                    val userId = backStackEntry.arguments?.getString("userId") ?: ""
+                    // Obtén los parámetros correctamente
+                    val groupIdParam = backStackEntry.arguments?.getString("groupId") ?: ""
+                    val userIdParam = backStackEntry.arguments?.getString("userId") ?: ""
 
-                    if (groupId.isNotEmpty() && userId.isNotEmpty()) {
-                        GroupManagementScreen(
-                            navController = navController,
-                            groupId = groupId,
-                            userId = userId
-                        )
-                    } else {
-                        Log.e("NavHost", "groupId o userId están vacíos. Verifica la navegación.")
-                        Toast.makeText(
-                            context,
-                            "Error al cargar la gestión del grupo.",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                    GroupManagementScreen(
+                        navController = navController,
+                        groupId = groupIdParam, // Usa la variable local
+                        userId = userIdParam,
+                        onGroupLeft = {
+                            groupId = null // Modifica el estado de MainScreen, no la variable local
+                        }
+                    )
+                }
+
+                composable("estadisticas") {
+                    groupId?.let { safeGroupId ->
+                        if (safeGroupId != "singrupo") {
+                            EstadisticasScreen(navController = navController, groupId = safeGroupId)
+                        } else {
+                            navController.navigate("group_screen/${currentUser?.uid ?: ""}")
+                        }
+                    }
+                }
+
+                composable("programar") {
+                    groupId?.let { safeGroupId ->
+                        if (safeGroupId != "singrupo") {
+                            ProgramarScreen(navController = navController, groupId = safeGroupId)
+                        } else {
+                            navController.navigate("group_screen/${currentUser?.uid ?: ""}")
+                        }
                     }
                 }
 
@@ -261,19 +272,6 @@ fun MainScreen(
                             displayName = updatedDisplayName
                             photoUrl = updatedPhotoUrl
                         }
-                    )
-                }
-
-                composable("estadisticas") {
-                    val safeGroupId = groupId ?: ""
-                    EstadisticasScreen(navController = navController, groupId = safeGroupId)
-                }
-
-                composable("programar") {
-                    val safeGroupId = groupId ?: ""
-                    ProgramarScreen(
-                        navController = navController,
-                        groupId = safeGroupId // Pasar el groupId directamente
                     )
                 }
 

@@ -37,7 +37,8 @@ data class Group(
 fun GroupManagementScreen(
     navController: NavHostController,
     userId: String,
-    groupId: String
+    groupId: String,
+    onGroupLeft: () -> Unit
 ) {
     val firestore = FirebaseFirestore.getInstance()
     var currentGroup by remember { mutableStateOf<Group?>(null) }
@@ -46,13 +47,15 @@ fun GroupManagementScreen(
     var showMembersDialog by remember { mutableStateOf(false) }
     var isLeavingGroup by remember { mutableStateOf(false) }
     var showConfirmationDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
-    if (isLeavingGroup) {
-        LoadingScreen(isLoading = isLeavingGroup) {
-            // No se necesita lógica adicional aquí
-        }
-    } else {
-        LaunchedEffect(groupId) {
+    // Cargar datos del grupo
+    LaunchedEffect(groupId) {
+        if (groupId == "singrupo") {
+            navController.navigate("group_screen/$userId") {
+                popUpTo("main_screen") { inclusive = true }
+            }
+        } else {
             firestore.collection("grupos").document(groupId).get()
                 .addOnSuccessListener { groupDoc ->
                     currentGroup = groupDoc.toObject(Group::class.java)
@@ -65,11 +68,16 @@ fun GroupManagementScreen(
                     isLoading = false
                 }
         }
+    }
 
+    // Mostrar la interfaz
+    if (isLeavingGroup) {
+        LoadingScreen(isLoading = isLeavingGroup)
+    } else {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text(text = "Gestión de Grupos", color = Color.White) },
+                    title = { Text("Gestión de Grupos", color = Color.White) },
                     colors = TopAppBarDefaults.smallTopAppBarColors(containerColor = Color(0xFF0D47A1))
                 )
             },
@@ -94,9 +102,31 @@ fun GroupManagementScreen(
                                 .padding(16.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            currentGroup?.let {
-                                Text("Grupo actual: ${it.name} (ID: ${it.id})", fontSize = 20.sp, color = Color.White)
+                            currentGroup?.let { group ->
+                                Text("Grupo actual: ${group.name} - ID:${groupId}", fontSize = 20.sp, color = Color.White)
                                 Spacer(modifier = Modifier.height(16.dp))
+
+                                Button(
+                                    onClick = {
+
+                                        val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                        val clipData = android.content.ClipData.newPlainText("Group ID", groupId)
+                                        clipboardManager.setPrimaryClip(clipData)
+
+                                        Toast.makeText(context, "ID copiado al portapapeles", Toast.LENGTH_SHORT).show()
+                                    },
+                                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(
+                                        0xFFE7C60D
+                                    )
+                                    ),
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Text("Copiar ID del grupo", color = Color.White)
+                                }
+
+                                Spacer(modifier = Modifier.height(16.dp))
+
 
                                 Button(
                                     onClick = { showMembersDialog = true },
@@ -104,10 +134,12 @@ fun GroupManagementScreen(
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF673AB7)),
                                     shape = RoundedCornerShape(16.dp)
                                 ) {
-                                    Text("Listar usuarios del grupo", color = Color.White, fontWeight = FontWeight.Bold)
+                                    Text("Listar usuarios del grupo", color = Color.White)
                                 }
 
                                 Spacer(modifier = Modifier.height(16.dp))
+
+
 
                                 Button(
                                     onClick = { showConfirmationDialog = true },
@@ -115,22 +147,10 @@ fun GroupManagementScreen(
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF5252)),
                                     shape = RoundedCornerShape(16.dp)
                                 ) {
-                                    Text("Dejar el grupo", color = Color.White, fontWeight = FontWeight.Bold)
-                                }
-
-                                if (it.creator == userId) {
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                    Button(
-                                        onClick = { navController.navigate("edit_group/${it.id}") },
-                                        modifier = Modifier.fillMaxWidth().height(56.dp),
-                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFAB00)),
-                                        shape = RoundedCornerShape(16.dp)
-                                    ) {
-                                        Text("Modificar grupo", color = Color.White, fontWeight = FontWeight.Bold)
-                                    }
+                                    Text("Dejar el grupo", color = Color.White)
                                 }
                             } ?: run {
-                                Text("No se encontró información del grupo", color = Color.White, fontSize = 16.sp)
+                                Text("No se encontró información del grupo", fontSize = 16.sp, color = Color.White)
                             }
                         }
 
@@ -145,9 +165,16 @@ fun GroupManagementScreen(
                             ConfirmationDialog(
                                 onConfirm = {
                                     isLeavingGroup = true
-                                    leaveGroupAndRedirectWithLoading(userId, groupId, navController, firestore) {
-                                        isLeavingGroup = false
-                                    }
+                                    leaveGroupAndRedirect(
+                                        navController = navController,
+                                        userId = userId,
+                                        groupId = groupId,
+                                        firestore = firestore,
+                                        onGroupLeft = onGroupLeft, // ¡Aquí se pasa el callback!
+                                        onComplete = {
+                                            isLeavingGroup = false
+                                        }
+                                    )
                                 },
                                 onDismiss = { showConfirmationDialog = false }
                             )
@@ -158,6 +185,7 @@ fun GroupManagementScreen(
         )
     }
 }
+
 
 @Composable
 fun ConfirmationDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
@@ -241,16 +269,20 @@ fun fetchGroupMembers(groupId: String, firestore: FirebaseFirestore, onResult: (
         }
 }
 
-
-fun leaveGroupAndRedirectWithLoading(
+fun leaveGroupAndRedirect(
+    navController: NavHostController,
     userId: String,
     groupId: String,
-    navController: NavHostController,
     firestore: FirebaseFirestore,
+    onGroupLeft: () -> Unit,
     onComplete: () -> Unit
 ) {
     val groupRef = firestore.collection("grupos").document(groupId).collection("usuarios").document(userId)
     val noGroupRef = firestore.collection("grupos").document("singrupo").collection("usuarios").document(userId)
+
+    // Variables de estado local
+    var currentGroup: Group? by mutableStateOf(null) // Estado del grupo actual
+    var groupMembers: List<String> by mutableStateOf(emptyList()) // Estado de los miembros del grupo
 
     groupRef.get()
         .addOnSuccessListener { documentSnapshot ->
@@ -262,12 +294,13 @@ fun leaveGroupAndRedirectWithLoading(
                     .addOnSuccessListener {
                         noGroupRef.set(userData)
                             .addOnSuccessListener {
-                                Handler(Looper.getMainLooper()).postDelayed({
-                                    navController.navigate("group_screen") {
-                                        popUpTo(0) { inclusive = true }
-                                    }
-                                    onComplete()
-                                }, 6000) // Retraso de 6 segundos
+                                currentGroup = null
+                                groupMembers = emptyList()
+                                onGroupLeft() // Notificar a MainScreen que el grupo se abandonó
+                                navController.navigate("group_screen/$userId") {
+                                    popUpTo("group_management_screen") { inclusive = true }
+                                }
+                                onComplete()
                             }
                             .addOnFailureListener { exception ->
                                 Log.e("LeaveGroup", "Error al mover al grupo sin grupo: ${exception.message}")
@@ -287,4 +320,22 @@ fun leaveGroupAndRedirectWithLoading(
             Log.e("LeaveGroup", "Error al obtener datos del usuario: ${exception.message}")
             onComplete()
         }
+}
+
+@Composable
+fun LoadingScreen(isLoading: Boolean, message: String = "Cargando...") {
+    if (isLoading) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0x80000000)),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                CircularProgressIndicator(color = Color.White)
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(text = message, color = Color.White)
+            }
+        }
+    }
 }
