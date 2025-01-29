@@ -61,12 +61,24 @@ fun GroupScreen(
     fun handleJoinGroup() {
         if (validateInput(groupCode, "Código del Grupo")) {
             isLoading = true
-            joinGroup(context, groupCode, userId) {
-                isLoading = false
-                Toast.makeText(context, "Te has unido al grupo", Toast.LENGTH_SHORT).show()
-                val intent = Intent(context, WelcomActivity::class.java)
-                context.startActivity(intent)
-            }
+            joinGroup(
+                context = context,
+                groupCode = groupCode,
+                userId = userId,
+                onSuccess = {
+                    isLoading = false
+                    Toast.makeText(context, "Te has unido al grupo", Toast.LENGTH_SHORT).show()
+                    val intent = Intent(context, WelcomActivity::class.java)
+                    context.startActivity(intent)
+                },
+                onFailure = { errorMsg ->
+                    // Aquí paramos la carga y mostramos el error
+                    isLoading = false
+                    Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show()
+                    // Opcional: podríamos navegar a otra pantalla o quedarnos
+                    // navController.navigate("GroupScreen")  // si quieres recargar la misma pantalla
+                }
+            )
         }
     }
 
@@ -245,7 +257,13 @@ fun createGroup(context: Context, name: String, userId: String, onSuccess: () ->
 }
 
 // Unirse a un grupo
-fun joinGroup(context: Context, groupCode: String, userId: String, onSuccess: () -> Unit) {
+fun joinGroup(
+    context: Context,
+    groupCode: String,
+    userId: String,
+    onSuccess: () -> Unit,
+    onFailure: (String) -> Unit  // <-- Nuevo callback de fallo
+) {
     val firestore = FirebaseFirestore.getInstance()
 
     firestore.collection(GROUPS_COLLECTION)
@@ -253,7 +271,8 @@ fun joinGroup(context: Context, groupCode: String, userId: String, onSuccess: ()
         .get()
         .addOnSuccessListener { querySnapshot ->
             if (querySnapshot.isEmpty) {
-                handleFirestoreError(context, "joinGroup", "Código de grupo no válido", null)
+                // Código de grupo no válido
+                onFailure("Código de grupo no válido")
                 return@addOnSuccessListener
             }
 
@@ -261,10 +280,13 @@ fun joinGroup(context: Context, groupCode: String, userId: String, onSuccess: ()
             val groupId = groupDoc.id
 
             // Mueve al usuario de 'singrupo' al grupo objetivo
-            moveUserToGroup(context, firestore, groupId, userId, onSuccess)
+            moveUserToGroup(context, firestore, groupId, userId) {
+                onSuccess()
+            }
         }
         .addOnFailureListener { exception ->
             handleFirestoreError(context, "joinGroup", "Error al verificar el grupo", exception)
+            onFailure("Error al verificar el grupo: ${exception.message}")
         }
 }
 
