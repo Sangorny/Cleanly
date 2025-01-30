@@ -138,7 +138,7 @@ fun Welcome(
                                 }
                             )
                             1 -> MostrarTareasFiltradas(
-                                tareas.filter { it.usuario.isNullOrEmpty() },
+                                tareas.filter { it.usuario.isNullOrEmpty() && it.completadoPor.isNullOrEmpty()},
                                 onTareaClick = { /* No se usa aquí */ },
                                 mostrarAsignado = false,
                                 nombresUsuarios = nombresUsuarios, // Pasar mapa de nombres
@@ -158,7 +158,7 @@ fun Welcome(
                                 }
                             )
                             2 -> MostrarTareasFiltradas(
-                                tareas.filter { it.usuario != FirebaseAuth.getInstance().currentUser?.uid && !it.usuario.isNullOrEmpty() },
+                                tareas.filter { it.usuario != FirebaseAuth.getInstance().currentUser?.uid && !it.usuario.isNullOrEmpty() && it.completadoPor.isNullOrEmpty()},
                                 onTareaClick = onTareaClick,
                                 mostrarAsignado = true,
                                 nombresUsuarios = nombresUsuarios // Pasar mapa de nombres

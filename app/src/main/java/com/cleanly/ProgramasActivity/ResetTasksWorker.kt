@@ -38,7 +38,7 @@ class ResetTasksWorker(
             // 🔹 3) Resetear tareas DIARIAS
             val dailyTasks = tasksRef.whereEqualTo("frecuencia", "Diaria").get().await()
             for (task in dailyTasks.documents) {
-                val dataToUpdate = mapOf("completadoPor" to "", "completadoEn" to null)
+                val dataToUpdate = mapOf("completadoPor" to "", "completadoEn" to null,"usuario" to null)
                 task.reference.update(dataToUpdate).await()
             }
 
@@ -59,7 +59,7 @@ class ResetTasksWorker(
             if (dayOfMonth == maxDayOfMonth) {
                 val monthlyTasks = tasksRef.whereEqualTo("frecuencia", "Mensual").get().await()
                 for (task in monthlyTasks.documents) {
-                    val dataToUpdate = mapOf("completadoPor" to "", "completadoEn" to null)
+                    val dataToUpdate = mapOf("completadoPor" to "", "completadoEn" to null,"usuario" to null)
                     task.reference.update(dataToUpdate).await()
                 }
             }

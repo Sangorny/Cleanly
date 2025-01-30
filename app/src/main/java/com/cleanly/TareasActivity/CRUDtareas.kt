@@ -231,7 +231,51 @@ fun CRUDTareas(
         showAsignarDialog = true
     }
 
+    fun editarTareaEnFirestore(
+        groupId: String,
+        nombreOriginal: String,    // Así localizas la tarea exacta
+        nuevoNombre: String,
+        nuevosPuntos: Int,
+        nuevaSubzona: String,
+        nuevaPrioridad: String,
+        onSuccess: () -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
+        val db = FirebaseFirestore.getInstance()
+        val groupRef = db.collection("grupos").document(groupId)
 
+        groupRef.collection("mistareas")
+            .whereEqualTo("nombre", nombreOriginal) // Filtra por el nombre original
+            .get()
+            .addOnSuccessListener { querySnapshot ->
+                if (querySnapshot.isEmpty) {
+                    // No se encontró ningún documento con ese nombre
+                    onFailure(Exception("No se encontró la tarea con el nombre $nombreOriginal"))
+                } else {
+                    // Suponiendo que el nombre es único, tomas el primer documento
+                    val docRef = querySnapshot.documents.first().reference
+
+                    // Haces el update de los campos
+                    docRef.update(
+                        mapOf(
+                            "nombre" to nuevoNombre,
+                            "puntos" to nuevosPuntos,
+                            "subzona" to nuevaSubzona,
+                            "prioridad" to nuevaPrioridad
+                        )
+                    )
+                        .addOnSuccessListener {
+                            onSuccess()
+                        }
+                        .addOnFailureListener { e ->
+                            onFailure(e)
+                        }
+                }
+            }
+            .addOnFailureListener { e ->
+                onFailure(e)
+            }
+    }
 
 
     val handleCreate = {
@@ -474,6 +518,57 @@ fun CRUDTareas(
                     },
                     dismissButton = {
                         Button(onClick = { showAsignarDialog = false }) {
+                            Text("Cancelar")
+                        }
+                    }
+                )
+            }
+            if (showEditDialog) {
+                AlertDialog(
+                    onDismissRequest = { showEditDialog = false },
+                    title = { Text("Editar Tarea") },
+                    text = {
+                        Column {
+                            TextField(
+                                value = taskName,
+                                onValueChange = { taskName = it },
+                                label = { Text("Nombre de la Tarea") }
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            TextField(
+                                value = taskSubzona,
+                                onValueChange = { taskSubzona = it },
+                                label = { Text("Subzona") }
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            TextField(
+                                value = taskPoints,
+                                onValueChange = { taskPoints = it },
+                                label = { Text("Puntos") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("Prioridad:")
+                            DropdownPrioridad(
+                                selectedPriority = selectedPriority,
+                                onPriorityChange = { newPriority ->
+                                    selectedPriority = newPriority
+                                }
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        Button(onClick = {
+                            // Aquí deberías hacer la actualización de la tarea en Firestore
+                            // (utilizando nombreOriginal si necesitas el nombre “viejo” para buscar el doc)
+                            // Y luego cierras el diálogo
+                            showEditDialog = false
+                        }) {
+                            Text("Guardar cambios")
+                        }
+                    },
+                    dismissButton = {
+                        Button(onClick = { showEditDialog = false }) {
                             Text("Cancelar")
                         }
                     }

@@ -12,6 +12,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.Worker
 import androidx.work.WorkerParameters
+import androidx.work.workDataOf
 import com.google.firebase.firestore.FirebaseFirestore
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
@@ -19,9 +20,16 @@ import java.util.concurrent.TimeUnit
 class TaskSyncWorker(context: Context, params: WorkerParameters) : Worker(context, params) {
 
     override fun doWork(): Result {
+        // 1) Obtenemos el groupId desde inputData
+        val groupId = inputData.getString("GROUP_ID")
+            ?: return Result.failure()  // Si no viene, marcamos error o algo similar
+
         val db = FirebaseFirestore.getInstance()
 
-        db.collection("MisTareas")
+
+        db.collection("grupos")
+            .document(groupId)
+            .collection("mistareas")
             .get()
             .addOnSuccessListener { result ->
                 val now = Calendar.getInstance()
@@ -35,13 +43,17 @@ class TaskSyncWorker(context: Context, params: WorkerParameters) : Worker(contex
                     // Lógica para priorizar las notificaciones
                     when (prioridad) {
                         "Urgente" -> {
-                            if (currentHour in 17..23 && shouldSendNotification(ultimaNotificacion, 60 * 60 * 1000)) {
+                            if (currentHour in 8..23 &&
+                                shouldSendNotification(ultimaNotificacion, 15 * 60 * 1000)) {
+
                                 enviarNotificacion(nombreTarea, prioridad)
                                 document.reference.update("ultimaNotificacion", com.google.firebase.Timestamp.now())
                             }
                         }
                         "Normal" -> {
-                            if (currentHour in listOf(18, 20, 22) && shouldSendNotification(ultimaNotificacion, 2 * 60 * 60 * 1000)) {
+                            if (currentHour in listOf(18, 20, 22) &&
+                                shouldSendNotification(ultimaNotificacion, 2 * 60 * 60 * 1000)) {
+
                                 enviarNotificacion(nombreTarea, prioridad)
                                 document.reference.update("ultimaNotificacion", com.google.firebase.Timestamp.now())
                             }
@@ -52,8 +64,8 @@ class TaskSyncWorker(context: Context, params: WorkerParameters) : Worker(contex
                     }
                 }
 
-                // Programar el siguiente Worker
-                programarProximoWorker(applicationContext)
+                // Programar el siguiente Worker, reenviándole el groupId
+                programarProximoWorker(applicationContext, groupId)
             }
             .addOnFailureListener { exception ->
                 Log.e("TaskSyncWorker", "Error al sincronizar: ${exception.message}")
@@ -66,6 +78,7 @@ class TaskSyncWorker(context: Context, params: WorkerParameters) : Worker(contex
         val now = System.currentTimeMillis()
         return ultimaNotificacion == null || now - ultimaNotificacion >= intervalo
     }
+
 
     private fun enviarNotificacion(nombreTarea: String, prioridad: String) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -85,17 +98,21 @@ class TaskSyncWorker(context: Context, params: WorkerParameters) : Worker(contex
         NotificationManagerCompat.from(applicationContext).notify(System.currentTimeMillis().toInt(), notification)
     }
 
-    private fun programarProximoWorker(context: Context) {
+    private fun programarProximoWorker(context: Context, groupId: String) {
+        // 1) Calcula la próxima hora
         val now = Calendar.getInstance()
-        now.add(Calendar.HOUR_OF_DAY, 1)
-        now.set(Calendar.MINUTE, 0)
+        now.set(Calendar.MINUTE, 30)
         now.set(Calendar.SECOND, 0)
         now.set(Calendar.MILLISECOND, 0)
 
         val delayMillis = now.timeInMillis - System.currentTimeMillis()
 
+        // 2) Pasamos el groupId también al siguiente Worker
+        val inputData = workDataOf("GROUP_ID" to groupId)
+
         val workRequest = OneTimeWorkRequestBuilder<TaskSyncWorker>()
             .setInitialDelay(delayMillis, TimeUnit.MILLISECONDS)
+            .setInputData(inputData)
             .build()
 
         WorkManager.getInstance(context).enqueue(workRequest)
