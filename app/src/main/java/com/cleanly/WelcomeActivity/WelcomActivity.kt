@@ -26,6 +26,7 @@ class WelcomActivity : ComponentActivity() {
             15, TimeUnit.MINUTES
         ).build()
 
+
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "TaskSyncWorker",
             ExistingPeriodicWorkPolicy.KEEP,

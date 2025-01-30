@@ -8,6 +8,7 @@ import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.Worker
@@ -20,18 +21,24 @@ import java.util.concurrent.TimeUnit
 class TaskSyncWorker(context: Context, params: WorkerParameters) : Worker(context, params) {
 
     override fun doWork(): Result {
-        // 1) Obtenemos el groupId desde inputData
-        val groupId = inputData.getString("GROUP_ID")
-            ?: return Result.failure()  // Si no viene, marcamos error o algo similar
+        Log.d("TaskSyncWorker", "Worker iniciado...")
+
+        // 🔹 1) Obtenemos el groupId desde inputData
+        val groupId = inputData.getString("GROUP_ID") ?: return Result.failure().also {
+            Log.e("TaskSyncWorker", "ERROR: GROUP_ID no recibido")
+        }
+        Log.d("TaskSyncWorker", "Recibido GROUP_ID: $groupId")
 
         val db = FirebaseFirestore.getInstance()
 
-
+        // 🔹 2) Obtener tareas desde Firestore
         db.collection("grupos")
             .document(groupId)
             .collection("mistareas")
             .get()
             .addOnSuccessListener { result ->
+                Log.d("TaskSyncWorker", "Tareas obtenidas: ${result.size()}")
+
                 val now = Calendar.getInstance()
                 val currentHour = now.get(Calendar.HOUR_OF_DAY)
 
@@ -40,12 +47,15 @@ class TaskSyncWorker(context: Context, params: WorkerParameters) : Worker(contex
                     val prioridad = document.getString("prioridad") ?: "Baja"
                     val ultimaNotificacion = document.getTimestamp("ultimaNotificacion")?.toDate()?.time
 
-                    // Lógica para priorizar las notificaciones
+                    Log.d("TaskSyncWorker", "Procesando tarea: $nombreTarea - Prioridad: $prioridad")
+
+                    // 🔹 3) Lógica para enviar notificaciones según prioridad
                     when (prioridad) {
                         "Urgente" -> {
                             if (currentHour in 8..23 &&
                                 shouldSendNotification(ultimaNotificacion, 15 * 60 * 1000)) {
 
+                                Log.d("TaskSyncWorker", "Enviando notificación urgente para: $nombreTarea")
                                 enviarNotificacion(nombreTarea, prioridad)
                                 document.reference.update("ultimaNotificacion", com.google.firebase.Timestamp.now())
                             }
@@ -54,21 +64,22 @@ class TaskSyncWorker(context: Context, params: WorkerParameters) : Worker(contex
                             if (currentHour in listOf(18, 20, 22) &&
                                 shouldSendNotification(ultimaNotificacion, 2 * 60 * 60 * 1000)) {
 
+                                Log.d("TaskSyncWorker", "Enviando notificación normal para: $nombreTarea")
                                 enviarNotificacion(nombreTarea, prioridad)
                                 document.reference.update("ultimaNotificacion", com.google.firebase.Timestamp.now())
                             }
                         }
                         "Baja" -> {
-                            // No hacer nada para prioridad Baja
+                            Log.d("TaskSyncWorker", "Tarea de baja prioridad, no se notifica.")
                         }
                     }
                 }
 
-                // Programar el siguiente Worker, reenviándole el groupId
+                // 🔹 4) Programar el siguiente Worker
                 programarProximoWorker(applicationContext, groupId)
             }
             .addOnFailureListener { exception ->
-                Log.e("TaskSyncWorker", "Error al sincronizar: ${exception.message}")
+                Log.e("TaskSyncWorker", "Error al sincronizar tareas: ${exception.message}")
             }
 
         return Result.success()
@@ -99,23 +110,31 @@ class TaskSyncWorker(context: Context, params: WorkerParameters) : Worker(contex
     }
 
     private fun programarProximoWorker(context: Context, groupId: String) {
-        // 1) Calcula la próxima hora
         val now = Calendar.getInstance()
-        now.set(Calendar.MINUTE, 30)
+        now.add(Calendar.MINUTE, 15) // 🔹 Programa para dentro de 15 minutos
         now.set(Calendar.SECOND, 0)
         now.set(Calendar.MILLISECOND, 0)
 
-        val delayMillis = now.timeInMillis - System.currentTimeMillis()
+        var delayMillis = now.timeInMillis - System.currentTimeMillis()
+        if (delayMillis <= 0) {
+            Log.e("TaskSyncWorker", "Error: delayMillis negativo ($delayMillis), ajustando a 15 minutos.")
+            delayMillis = TimeUnit.MINUTES.toMillis(15) // 🔹 Evita valores negativos
+        }
 
-        // 2) Pasamos el groupId también al siguiente Worker
+        // 🔹 Pasar el groupId como inputData
         val inputData = workDataOf("GROUP_ID" to groupId)
 
         val workRequest = OneTimeWorkRequestBuilder<TaskSyncWorker>()
             .setInitialDelay(delayMillis, TimeUnit.MILLISECONDS)
-            .setInputData(inputData)
+            .setInputData(inputData) // 🔹 Aquí pasamos el groupId
             .build()
 
-        WorkManager.getInstance(context).enqueue(workRequest)
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            "TaskSyncWorker_$groupId", // 🔹 Evita duplicados
+            ExistingWorkPolicy.REPLACE, // 🔹 Reemplaza cualquier Worker pendiente
+            workRequest
+        )
+
         Log.d("TaskSyncWorker", "Siguiente notificación programada en ${delayMillis / 1000 / 60} minutos.")
     }
 }

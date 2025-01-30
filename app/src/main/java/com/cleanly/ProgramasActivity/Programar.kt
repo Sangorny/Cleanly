@@ -72,8 +72,9 @@ fun ProgramarScreen(navController: NavHostController, groupId: String) {
             Log.e("Permisos", "Permiso para notificaciones denegado")
         }
     }
-    LaunchedEffect(Unit) {
 
+
+    LaunchedEffect(Unit) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {
@@ -343,25 +344,6 @@ fun TareaItem(tarea: Tarea, onProgramarTarea: (Tarea) -> Unit) {
     }
 }
 
-fun actualizarFrecuencia(db: FirebaseFirestore, tarea: Tarea?, nuevaFrecuencia: String?) {
-    if (tarea == null) return
-
-    db.collection("MisTareas")
-        .whereEqualTo("nombre", tarea.nombre) // O usa el ID único si tienes uno
-        .get()
-        .addOnSuccessListener { result ->
-            if (result.isEmpty) return@addOnSuccessListener
-
-            val docRef = result.documents.first().reference
-            docRef.update("frecuencia", nuevaFrecuencia)
-                .addOnSuccessListener {
-                    Log.d("Firestore", "Frecuencia actualizada a $nuevaFrecuencia")
-                }
-                .addOnFailureListener {
-                    Log.e("Firestore", "Error al actualizar la frecuencia", it)
-                }
-        }
-}
 
 fun actualizarFrecuencia(
     db: FirebaseFirestore,

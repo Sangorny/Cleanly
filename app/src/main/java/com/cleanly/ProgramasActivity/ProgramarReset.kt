@@ -1,6 +1,7 @@
 package com.cleanly.ProgramasActivity
 
 import android.content.Context
+import android.util.Log
 import androidx.work.*
 import com.cleanly.work.ResetTasksWorker
 import java.util.concurrent.TimeUnit
@@ -30,19 +31,29 @@ fun programarReset(context: Context, isAdmin: Boolean, groupId: String) {
 }
 
 fun programarTaskSync(context: Context, groupId: String) {
-    // 1) Crear input data con el groupId
-    val inputData = workDataOf("GROUP_ID" to groupId)
+    val inputData = workDataOf(
+        "GROUP_ID" to groupId
+    )
 
-    // 2) Crear un WorkRequest periódico
-    // (si quieres cada hora, cada 2 horas, etc.)
-    val workRequest = PeriodicWorkRequestBuilder<TaskSyncWorker>(1, TimeUnit.HOURS)
-        .setInputData(inputData)
+    val workManager = WorkManager.getInstance(context) // 🔹 Obtén el WorkManager
+
+    // 🔹 Cancela cualquier Worker anterior para este groupId antes de encolar uno nuevo
+    workManager.cancelUniqueWork("TaskSyncWorker_$groupId")
+
+    val taskSyncWorkRequest = PeriodicWorkRequestBuilder<TaskSyncWorker>(15, TimeUnit.MINUTES)
+        .setInputData(inputData) // 🔹 Aquí enviamos el groupId al Worker
+        .setConstraints(
+            Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
+        )
         .build()
 
-    // 3) Encolarlo como UniqueWork para no duplicar
-    WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-        "TaskSyncWorker",
-        ExistingPeriodicWorkPolicy.KEEP,
-        workRequest
+    workManager.enqueueUniquePeriodicWork(
+        "TaskSyncWorker_$groupId", // 🔹 Un identificador único por grupo
+        ExistingPeriodicWorkPolicy.REPLACE, // 🔹 Reemplaza cualquier Worker en ejecución
+        taskSyncWorkRequest
     )
+
+    Log.d("TaskSyncWorker", "Worker programado para groupId: $groupId cada 15 minutos.")
 }
