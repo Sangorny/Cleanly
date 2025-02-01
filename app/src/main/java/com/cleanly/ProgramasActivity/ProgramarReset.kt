@@ -63,24 +63,3 @@ fun programarTaskSync(context: Context, groupId: String) {
     Log.d("TaskSyncWorker", "Worker programado para groupId: $groupId cada 15 minutos.")
 }
 
-// Programamos el Worker que se encargará de revisar las tareas cada 45 minutos
-
-fun programarTaskCheck(context: Context, groupId: String) {
-    val inputData = workDataOf("GROUP_ID" to groupId)
-
-    val taskCheckWorkRequest = PeriodicWorkRequestBuilder<TaskCheckWorker>(45, TimeUnit.MINUTES)
-        .setInputData(inputData)
-        .setConstraints(
-            Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .build()
-        )
-        .build()
-
-    WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-        "TaskCheckWorker_$groupId", // Identificador único para evitar duplicados
-        ExistingPeriodicWorkPolicy.REPLACE,
-        taskCheckWorkRequest
-    )
-    Log.d("TaskWorker", "TaskCheckWorker programado para groupId: $groupId cada 45 minutos.")
-}

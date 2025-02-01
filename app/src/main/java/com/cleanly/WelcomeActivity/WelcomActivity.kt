@@ -7,12 +7,10 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.cleanly.ProgramasActivity.GestionProgramar
-import com.cleanly.ProgramasActivity.TaskCheckWorker
 import com.cleanly.ProgramasActivity.TaskSyncWorker
-import com.cleanly.ui.theme.CleanlyTheme
 import com.cleanly.work.ResetTasksWorker
+import com.cleanly.ui.theme.CleanlyTheme
 import java.util.concurrent.TimeUnit
-
 
 class WelcomActivity : ComponentActivity() {
 
@@ -22,11 +20,10 @@ class WelcomActivity : ComponentActivity() {
         // (1) Crear canal de notificaciones
         GestionProgramar.createNotificationChannel(this)
 
-        // (2) Configurar WorkManager para tareas periódicas (cada hora)
+        // (2) Programar el Worker de sincronización de tareas (cada 60 minutos)
         val taskSyncWorkRequest = PeriodicWorkRequestBuilder<TaskSyncWorker>(
             60, TimeUnit.MINUTES
         ).build()
-
 
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "TaskSyncWorker",
@@ -34,8 +31,7 @@ class WelcomActivity : ComponentActivity() {
             taskSyncWorkRequest
         )
 
-
-        // (3) Configurar un segundo Worker para cada 24 horas (ResetTasksWorker)
+        // (3) Programar el Worker de reseteo de tareas (cada 24 horas)
         val resetTasksWorkRequest = PeriodicWorkRequestBuilder<ResetTasksWorker>(
             1, TimeUnit.DAYS
         ).build()
@@ -46,18 +42,7 @@ class WelcomActivity : ComponentActivity() {
             resetTasksWorkRequest
         )
 
-        // (4) Programar el nuevo Worker que revisa las tareas cada 45 minutos (TaskCheckWorker)
-        val taskCheckWorkRequest = PeriodicWorkRequestBuilder<TaskCheckWorker>(
-            45, TimeUnit.MINUTES
-        ).build()
-
-        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-            "TaskCheckWorker",
-            ExistingPeriodicWorkPolicy.KEEP,
-            taskCheckWorkRequest
-        )
-
-        // Por último, configurar la interfaz de usuario:
+        // (4) Configurar la interfaz de usuario:
         setContent {
             CleanlyTheme {
                 AppNavigation()
