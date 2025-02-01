@@ -20,17 +20,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.cleanly.R
+import com.google.android.gms.tasks.Tasks
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.SetOptions
 import java.util.*
-import java.util.concurrent.TimeUnit
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EstadisticasScreen(
     navController: NavHostController,
-    groupId: String
+    groupId: String,
+    nombresUsuarios: Map<String, String>
 ) {
     val firestore = FirebaseFirestore.getInstance()
     var memberScores by remember { mutableStateOf<List<Pair<String, Int>>>(emptyList()) }
@@ -38,19 +39,24 @@ fun EstadisticasScreen(
     var victories by remember { mutableStateOf(0) }
 
     LaunchedEffect(groupId) {
-        Log.d("EstadisticasScreen", "Cargando datos para groupId: $groupId")
         fetchMemberRanking(groupId, firestore) { scores ->
-            memberScores = scores
+            memberScores = scores.map { (uid, score) ->
+                val name = nombresUsuarios[uid] ?: "Usuario desconocido"
+                name to score
+            }
             isLoading = false
-            if (scores.isNotEmpty() && scores[0].second > 0) {
-                fetchVictories(groupId, firestore, scores[0].first) { victoriesCount ->
+
+            if (scores.isNotEmpty()) {
+                val winnerId = scores[0].first
+
+                fetchVictories(groupId, firestore, winnerId) { victoriesCount ->
                     victories = victoriesCount
                 }
             }
-            Log.d("EstadisticasScreen", "Clasificación cargada: $memberScores")
         }
         scheduleResetScores(groupId, firestore)
     }
+
 
     Scaffold(
         topBar = {
@@ -81,7 +87,6 @@ fun EstadisticasScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Copa e información de victorias
                     if (memberScores.isNotEmpty()) {
                         Image(
                             painter = painterResource(id = R.drawable.copa),
@@ -99,58 +104,46 @@ fun EstadisticasScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    if (memberScores.isNotEmpty()) {
-                        memberScores.forEachIndexed { index, (name, score) ->
-                            Row(
+                    memberScores.forEachIndexed { index, (name, score) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.White)
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(Color.White)
-                                    .padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                    .size(40.dp)
+                                    .background(Color(0xFF673AB7), RoundedCornerShape(20.dp)),
+                                contentAlignment = Alignment.Center
                             ) {
-                                // Número de clasificación
-                                Box(
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .background(Color(0xFF673AB7), RoundedCornerShape(20.dp)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = (index + 1).toString(),
-                                        color = Color.White,
-                                        fontSize = 14.sp
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.width(16.dp))
-
-                                // Nombre del miembro
                                 Text(
-                                    text = name,
-                                    fontSize = 16.sp,
-                                    color = Color.Black,
-                                    fontWeight = FontWeight.Bold
-                                )
-
-                                Spacer(modifier = Modifier.weight(1f))
-
-                                // Puntos del miembro
-                                Text(
-                                    text = "$score puntos",
-                                    fontSize = 16.sp,
-                                    color = Color.Gray,
-                                    fontWeight = FontWeight.Normal
+                                    text = (index + 1).toString(),
+                                    color = Color.White,
+                                    fontSize = 14.sp
                                 )
                             }
+
+                            Spacer(modifier = Modifier.width(16.dp))
+
+                            Text(
+                                text = name,
+                                fontSize = 16.sp,
+                                color = Color.Black,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Spacer(modifier = Modifier.weight(1f))
+
+                            Text(
+                                text = "$score puntos",
+                                fontSize = 16.sp,
+                                color = Color.Gray,
+                                fontWeight = FontWeight.Normal
+                            )
                         }
-                    } else {
-                        Text(
-                            text = "No se encontraron miembros en este grupo.",
-                            fontSize = 16.sp,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
                     }
                 }
             }
@@ -176,12 +169,13 @@ fun fetchVictories(groupId: String, firestore: FirebaseFirestore, winnerId: Stri
 fun scheduleResetScores(groupId: String, firestore: FirebaseFirestore) {
     val now = Calendar.getInstance()
     val resetTime = Calendar.getInstance().apply {
-        set(Calendar.HOUR_OF_DAY, 11)
-        set(Calendar.MINUTE, 22)
+        set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY)
+        set(Calendar.HOUR_OF_DAY, 23)
+        set(Calendar.MINUTE, 59)
         set(Calendar.SECOND, 0)
         set(Calendar.MILLISECOND, 0)
-        if (timeInMillis <= now.timeInMillis) {
-            add(Calendar.DAY_OF_YEAR, 1) // Si ya pasó, lo programa para el siguiente día
+        if (this.timeInMillis <= now.timeInMillis) {
+            add(Calendar.DAY_OF_YEAR, 7)
         }
     }
 
@@ -190,9 +184,13 @@ fun scheduleResetScores(groupId: String, firestore: FirebaseFirestore) {
     Log.d("scheduleResetScores", "Puntuaciones se resetearán en $delay ms")
 
     Handler(Looper.getMainLooper()).postDelayed({
-        resetScores(groupId, firestore)
+        resetScores(groupId, firestore) { updatedScores, updatedVictories ->
+            Log.d("scheduleResetScores", "Clasificación actualizada tras el reset")
+            Log.d("scheduleResetScores", "Victorias: $updatedVictories")
+        }
     }, delay)
 }
+
 
 
 fun fetchMemberRanking(
@@ -203,96 +201,105 @@ fun fetchMemberRanking(
     val groupUsersRef = firestore.collection("grupos").document(groupId).collection("usuarios")
     val groupTasksRef = firestore.collection("grupos").document(groupId).collection("mistareas")
 
-    groupUsersRef.get()
-        .addOnSuccessListener { userSnapshots ->
-            val validUserIds = userSnapshots.documents.map { it.id }.toSet() // Obtener solo los IDs de usuarios activos
-            val uidToNameMap = userSnapshots.documents.associate {
-                it.id to (it.getString("nombre") ?: "Usuario desconocido")
+    val usersListener = groupUsersRef.addSnapshotListener { userSnapshots, error ->
+        if (error != null) {
+            Log.e("fetchMemberRanking", "Error en listener de usuarios: ${error.message}")
+            return@addSnapshotListener
+        }
+
+        val validUserIds = userSnapshots?.documents?.map { it.id }?.toSet() ?: emptySet()
+        val uidToNameMap = userSnapshots?.documents?.associate {
+            it.id to (it.getString("nombre") ?: "Usuario desconocido")
+        } ?: emptyMap()
+
+        val tasksListener = groupTasksRef.addSnapshotListener { taskSnapshots, taskError ->
+            if (taskError != null) {
+                Log.e("fetchMemberRanking", "Error en listener de tareas: ${taskError.message}")
+                return@addSnapshotListener
             }
 
-            groupTasksRef.get()
-                .addOnSuccessListener { taskSnapshots ->
-                    val uidToScoreMap = mutableMapOf<String, Int>()
+            val uidToScoreMap = mutableMapOf<String, Int>()
+            taskSnapshots?.documents?.forEach { taskDoc ->
+                val uid = taskDoc.getString("usuario") ?: return@forEach
+                val points = taskDoc.getLong("puntos")?.toInt() ?: 0
 
-                    taskSnapshots.documents.forEach { taskDoc ->
-                        val uid = taskDoc.getString("usuario") ?: return@forEach
-                        val points = taskDoc.getLong("puntos")?.toInt() ?: 0
-
-                        // **Solo incluir si el usuario sigue en el grupo**
-                        if (validUserIds.contains(uid)) {
-                            uidToScoreMap[uid] = uidToScoreMap.getOrDefault(uid, 0) + points
-                        } else {
-                            // **Si el usuario ya no está, eliminar su tarea**
-                            taskDoc.reference.delete()
-                        }
+                if (validUserIds.contains(uid)) {
+                    uidToScoreMap[uid] = uidToScoreMap.getOrDefault(uid, 0) + points
+                } else {
+                    taskDoc.reference.delete().addOnFailureListener { e ->
+                        Log.e("fetchMemberRanking", "Error al eliminar tarea: ${e.message}")
                     }
-
-                    val ranking = uidToScoreMap.mapNotNull { (uid, score) ->
-                        val name = uidToNameMap[uid] ?: "Usuario desconocido"
-                        name to score
-                    }.sortedByDescending { it.second }
-
-                    onResult(ranking)
                 }
-                .addOnFailureListener { exception ->
-                    Log.e("fetchMemberRanking", "Error al cargar tareas: ${exception.message}")
-                    onResult(emptyList())
-                }
+            }
+
+            // Cambiar para usar el UID en lugar del nombre
+            val ranking = uidToScoreMap.map { (uid, score) ->
+                uid to score
+            }.sortedByDescending { it.second }
+
+            onResult(ranking)
         }
-        .addOnFailureListener { exception ->
-            Log.e("fetchMemberRanking", "Error al cargar usuarios: ${exception.message}")
-            onResult(emptyList())
-        }
+    }
 }
 
-fun resetScores(groupId: String, firestore: FirebaseFirestore) {
+fun resetScores(
+    groupId: String,
+    firestore: FirebaseFirestore,
+    onRankingUpdated: (List<Pair<String, Int>>, Int) -> Unit
+) {
     val groupUsersRef = firestore.collection("grupos").document(groupId).collection("usuarios")
+    val groupTasksRef = firestore.collection("grupos").document(groupId).collection("mistareas")
     val victoriesRef = firestore.collection("grupos").document(groupId).collection("victorias")
 
     groupUsersRef.get().addOnSuccessListener { userSnapshots ->
-        var topUserId: String? = null
-        var maxPoints = -1
+        val userIds = userSnapshots.documents.map { it.id }
 
-        // Encontrar al usuario con más puntos
-        userSnapshots.documents.forEach { userDoc ->
-            val userId = userDoc.id
-            val points = userDoc.getLong("puntos")?.toInt() ?: 0
+        fetchMemberRanking(groupId, firestore) { scores ->
+            if (scores.isNotEmpty()) {
+                val winnerId = scores[0].first
 
-            if (points > maxPoints) {
-                maxPoints = points
-                topUserId = userId
-            }
-        }
-
-        // Si hay un ganador, incrementar su contador de victorias ANTES de resetear puntos
-        topUserId?.let { winnerId ->
-            val winnerDocRef = victoriesRef.document(winnerId)
-
-            winnerDocRef.get().addOnSuccessListener { document ->
-                val currentVictories = document.getLong("count")?.toInt() ?: 0
-
-                // Incrementar victorias
-                winnerDocRef.set(mapOf("count" to (currentVictories + 1)), SetOptions.merge())
+                // Sumar la victoria al ganador
+                victoriesRef.document(winnerId).update("count", FieldValue.increment(1))
                     .addOnSuccessListener {
-                        Log.d("resetScores", "Victoria añadida para usuario: $winnerId")
+                        Log.d("resetScores", "Victoria sumada correctamente para $winnerId")
 
-                        // Ahora sí, resetear las puntuaciones
-                        userSnapshots.documents.forEach { userDoc ->
-                            userDoc.reference.update("puntos", 0)
-                                .addOnSuccessListener {
-                                    Log.d("resetScores", "Puntuación reseteada para: ${userDoc.id}")
+                        // Crear tareas para resetear puntos de usuarios y tareas
+                        val resetUserTasks = userIds.map { userId ->
+                            groupUsersRef.document(userId).update("puntos", 0)
+                        }
+
+                        val resetTaskPoints = groupTasksRef.get().continueWithTask { task ->
+                            val resetTasks = task.result?.documents?.map { taskDoc ->
+                                taskDoc.reference.update("puntos", 0)
+                            } ?: emptyList()
+                            Tasks.whenAll(resetTasks)  // Asegurarnos de esperar todas las actualizaciones de tareas
+                        }
+
+                        // Esperar a que todas las tareas se completen
+                        Tasks.whenAll(resetUserTasks + resetTaskPoints).addOnSuccessListener {
+                            Log.d("resetScores", "Reseteo completado correctamente")
+
+                            // Leer el valor actualizado de victorias
+                            victoriesRef.document(winnerId).get().addOnSuccessListener { document ->
+                                val updatedVictories = document.getLong("count")?.toInt() ?: 0
+
+                                // Actualizar la clasificación y las victorias en la UI
+                                fetchMemberRanking(groupId, firestore) { updatedScores ->
+                                    onRankingUpdated(updatedScores, updatedVictories)
                                 }
-                                .addOnFailureListener { exception ->
-                                    Log.e("resetScores", "Error al resetear puntuación: ${exception.message}")
-                                }
+                            }
+                        }.addOnFailureListener { e ->
+                            Log.e("resetScores", "Error durante el reseteo: ${e.message}")
                         }
                     }
-                    .addOnFailureListener { exception ->
-                        Log.e("resetScores", "Error al actualizar victorias: ${exception.message}")
+                    .addOnFailureListener { e ->
+                        Log.e("resetScores", "Error al sumar victoria: ${e.message}")
                     }
+            } else {
+                Log.d("resetScores", "No hay usuarios con puntuación para procesar.")
             }
         }
-    }.addOnFailureListener {
-        Log.e("resetScores", "Error al resetear puntuaciones: ${it.message}")
+    }.addOnFailureListener { e ->
+        Log.e("resetScores", "Error al obtener usuarios del grupo: ${e.message}")
     }
 }

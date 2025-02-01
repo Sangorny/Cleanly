@@ -45,15 +45,17 @@ class TaskSyncWorker(context: Context, params: WorkerParameters) : Worker(contex
                 for (document in result) {
                     val nombreTarea = document.getString("nombre") ?: "Tarea sin nombre"
                     val prioridad = document.getString("prioridad") ?: "Baja"
+                    val estado = document.getString("estado") ?: "pendiente"  // Valor actualizado por TaskCheckWorker
                     val ultimaNotificacion = document.getTimestamp("ultimaNotificacion")?.toDate()?.time
 
                     Log.d("TaskSyncWorker", "Procesando tarea: $nombreTarea - Prioridad: $prioridad")
 
                     // 🔹 3) Lógica para enviar notificaciones según prioridad
+                    if (estado != "completada") {
                     when (prioridad) {
                         "Urgente" -> {
                             if (currentHour in 8..23 &&
-                                shouldSendNotification(ultimaNotificacion, 15 * 60 * 1000)) {
+                                shouldSendNotification(ultimaNotificacion, 60 * 60 * 1000)) {
 
                                 Log.d("TaskSyncWorker", "Enviando notificación urgente para: $nombreTarea")
                                 enviarNotificacion(nombreTarea, prioridad)
@@ -72,6 +74,10 @@ class TaskSyncWorker(context: Context, params: WorkerParameters) : Worker(contex
                         "Baja" -> {
                             Log.d("TaskSyncWorker", "Tarea de baja prioridad, no se notifica.")
                         }
+
+                    }
+                    } else {
+                        Log.d("TaskSyncWorker", "La tarea '$nombreTarea' está completada, no se notifica.")
                     }
                 }
 

@@ -38,7 +38,7 @@ fun Welcome(
     val auth = FirebaseAuth.getInstance()
     val currentUser = auth.currentUser
     val displayName = remember(currentUser) { currentUser?.displayName ?: "Usuario" }
-    val tabTitles = listOf("Asignadas", "Pendientes", "Otros")
+    val tabTitles = listOf("Asignadas", "Pendientes", "Otros", "Completas")
     var selectedTabIndex by remember { mutableStateOf(0) }
     var tareas by remember { mutableStateOf<List<Tarea>>(emptyList()) }
 
@@ -102,7 +102,7 @@ fun Welcome(
                                     text = {
                                         Text(
                                             text = title,
-                                            fontSize = 16.sp,
+                                            fontSize = 12.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = if (selectedTabIndex == index) Color.White else Color.Gray
                                         )
@@ -162,6 +162,15 @@ fun Welcome(
                                 onTareaClick = onTareaClick,
                                 mostrarAsignado = true,
                                 nombresUsuarios = nombresUsuarios // Pasar mapa de nombres
+                            )
+
+                            // Tareas completadas: se muestran aquellas que ya tienen definido el campo completadoPor.
+                            3 -> MostrarTareasFiltradas(
+                                tareas.filter { it.completadoPor != null && it.completadoPor.isNotEmpty() },
+                                onTareaClick = onTareaClick,
+                                // En este caso, puede que quieras seguir mostrando el usuario que completó la tarea.
+                                mostrarAsignado = true,
+                                nombresUsuarios = nombresUsuarios
                             )
                         }
 

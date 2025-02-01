@@ -257,7 +257,11 @@ fun MainScreen(
                 composable("estadisticas") {
                     groupId?.let { safeGroupId ->
                         if (safeGroupId != "singrupo") {
-                            EstadisticasScreen(navController = navController, groupId = safeGroupId)
+                            EstadisticasScreen(
+                                navController = navController,
+                                groupId = safeGroupId,
+                                nombresUsuarios = nombresUsuarios.value
+                            )
                         } else {
                             navController.navigate("group_screen/${currentUser?.uid ?: ""}")
                         }

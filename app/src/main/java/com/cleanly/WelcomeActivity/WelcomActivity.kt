@@ -7,6 +7,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.cleanly.ProgramasActivity.GestionProgramar
+import com.cleanly.ProgramasActivity.TaskCheckWorker
 import com.cleanly.ProgramasActivity.TaskSyncWorker
 import com.cleanly.ui.theme.CleanlyTheme
 import com.cleanly.work.ResetTasksWorker
@@ -23,7 +24,7 @@ class WelcomActivity : ComponentActivity() {
 
         // (2) Configurar WorkManager para tareas periódicas (cada hora)
         val taskSyncWorkRequest = PeriodicWorkRequestBuilder<TaskSyncWorker>(
-            15, TimeUnit.MINUTES
+            60, TimeUnit.MINUTES
         ).build()
 
 
@@ -32,6 +33,7 @@ class WelcomActivity : ComponentActivity() {
             ExistingPeriodicWorkPolicy.KEEP,
             taskSyncWorkRequest
         )
+
 
         // (3) Configurar un segundo Worker para cada 24 horas (ResetTasksWorker)
         val resetTasksWorkRequest = PeriodicWorkRequestBuilder<ResetTasksWorker>(
@@ -42,6 +44,17 @@ class WelcomActivity : ComponentActivity() {
             "ResetTasksDaily",
             ExistingPeriodicWorkPolicy.KEEP,
             resetTasksWorkRequest
+        )
+
+        // (4) Programar el nuevo Worker que revisa las tareas cada 45 minutos (TaskCheckWorker)
+        val taskCheckWorkRequest = PeriodicWorkRequestBuilder<TaskCheckWorker>(
+            45, TimeUnit.MINUTES
+        ).build()
+
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "TaskCheckWorker",
+            ExistingPeriodicWorkPolicy.KEEP,
+            taskCheckWorkRequest
         )
 
         // Por último, configurar la interfaz de usuario:
