@@ -162,6 +162,13 @@ fun MainScreen(
         groupId?.let { safeGroupId ->
             if (isAdmin && !workerProgramado) {
                 programarReset(context, isAdmin, safeGroupId)
+            }
+        }
+    }
+
+    LaunchedEffect(groupId) {
+        groupId?.let { safeGroupId ->
+            if (!workerProgramado) {
                 programarTaskSync(context, safeGroupId)
                 workerProgramado = true
             }

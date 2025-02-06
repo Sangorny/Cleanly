@@ -122,7 +122,7 @@ private fun reloadTaskList(
 ) {
     db.collection("grupos")
         .document(groupId)
-        .collection("tareas")
+        .collection("mistareas")
         .whereEqualTo("zona", zonaSeleccionada)
         .get()
         .addOnSuccessListener { result ->

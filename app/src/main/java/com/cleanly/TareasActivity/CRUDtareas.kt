@@ -559,10 +559,31 @@ fun CRUDTareas(
                     },
                     confirmButton = {
                         Button(onClick = {
-                            // Aquí deberías hacer la actualización de la tarea en Firestore
-                            // (utilizando nombreOriginal si necesitas el nombre “viejo” para buscar el doc)
-                            // Y luego cierras el diálogo
-                            showEditDialog = false
+                            // Llamada a la función de edición
+                            editarTareaEnFirestore(
+                                groupId = groupId,
+                                nombreOriginal = nombreOriginal,
+                                nuevoNombre = taskName,
+                                nuevosPuntos = taskPoints.toInt(),
+                                nuevaSubzona = taskSubzona,
+                                nuevaPrioridad = selectedPriority,
+                                onSuccess = {
+                                    showSnackbarMessage = "Tarea editada correctamente"
+                                    showEditDialog = false
+                                    // Recargar la lista de tareas tras la edición
+                                    cargarTareasDesdeFirestore(
+                                        groupId = groupId,
+                                        zonaSeleccionada = zonaSeleccionada,
+                                        onSuccess = onTaskListUpdated,
+                                        onFailure = { exception ->
+                                            showSnackbarMessage = "Error al cargar tareas: ${exception.message}"
+                                        }
+                                    )
+                                },
+                                onFailure = { exception ->
+                                    showSnackbarMessage = "Error al editar la tarea: ${exception.message}"
+                                }
+                            )
                         }) {
                             Text("Guardar cambios")
                         }
