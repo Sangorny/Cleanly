@@ -55,7 +55,7 @@ class TaskSyncWorker(context: Context, params: WorkerParameters) : Worker(contex
                         when (prioridad) {
                             "Urgente" -> {
                                 // Ejemplo: notificar si estamos entre las 8 y 23 y si ha pasado el intervalo (1 hora = 60*60*1000 milisegundos)
-                                if (currentHour in 8..23 &&
+                                if (currentHour in 17..23 &&
                                     shouldSendNotification(ultimaNotificacion, 60 * 60 * 1000)) {
 
                                     Log.d("TaskSyncWorker", "Enviando notificación urgente para: $nombreTarea")

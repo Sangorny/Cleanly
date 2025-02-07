@@ -22,6 +22,7 @@ import com.cleanly.PerfilActivity.LoadingScreen
 import com.cleanly.PerfilActivity.ProfileScreen
 import com.cleanly.ProgramasActivity.programarReset
 import com.cleanly.ProgramasActivity.programarTaskSync
+import com.cleanly.ProgramasActivity.scheduleInitialReset
 import com.cleanly.WelcomeActivity.WelcomeTopBar
 import com.cleanly.WelcomeActivity.WelcomeDownBar
 import com.cleanly.shared.Tarea
@@ -161,7 +162,8 @@ fun MainScreen(
     LaunchedEffect(isAdmin, groupId) {
         groupId?.let { safeGroupId ->
             if (isAdmin && !workerProgramado) {
-                programarReset(context, isAdmin, safeGroupId)
+                scheduleInitialReset(context, isAdmin, safeGroupId)
+                workerProgramado = true
             }
         }
     }
