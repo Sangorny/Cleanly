@@ -1,6 +1,7 @@
 package com.cleanly
 
 import MisTareasScreen
+import RegisterScreen
 import android.util.Log
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.runtime.Composable
@@ -15,7 +16,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
-import com.cleanly.PerfilActivity.GroupManagementScreen
 import com.cleanly.PerfilActivity.GroupScreen
 
 
@@ -34,10 +34,6 @@ fun AppNavigation() {
 
         composable("register") {
             RegisterScreen(navController = navController)
-        }
-
-        composable("check_authentication") {
-            CheckAuthentication(navController = navController)
         }
 
         // Pantalla Login
