@@ -20,7 +20,6 @@ import com.cleanly.PerfilActivity.GroupManagementScreen
 import com.cleanly.PerfilActivity.GroupScreen
 import com.cleanly.PerfilActivity.LoadingScreen
 import com.cleanly.PerfilActivity.ProfileScreen
-import com.cleanly.ProgramasActivity.programarReset
 import com.cleanly.ProgramasActivity.programarTaskSync
 import com.cleanly.ProgramasActivity.scheduleInitialReset
 import com.cleanly.WelcomeActivity.WelcomeTopBar

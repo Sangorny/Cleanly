@@ -201,28 +201,33 @@ fun CRUDTareas(
         }
     }
 
-    fun asignarTarea(tarea: Tarea, usuarioId: String) {
+    fun asignarTarea(
+        tarea: Tarea,
+        usuarioId: String,
+        onSuccess: () -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
         db.collection("grupos")
             .document(groupId)
             .collection("mistareas")
-            .whereEqualTo("nombre", tarea.nombre) // Busca directamente por el nombre
+            .whereEqualTo("nombre", tarea.nombre)
             .get()
             .addOnSuccessListener { querySnapshot ->
                 if (querySnapshot.isEmpty) {
-                    showSnackbarMessage = "No se encontró la tarea con el nombre '${tarea.nombre}'."
+                    onFailure(Exception("No se encontró la tarea con el nombre '${tarea.nombre}'."))
                 } else {
                     val documentRef = querySnapshot.documents.first().reference
-                    documentRef.update("usuario", usuarioId) // Actualiza o crea el campo "usuario"
+                    documentRef.update("usuario", usuarioId)
                         .addOnSuccessListener {
-                            showSnackbarMessage = "Tarea '${tarea.nombre}' asignada a ${nombresUsuarios[usuarioId]}"
+                            onSuccess()
                         }
-                        .addOnFailureListener {
-                            showSnackbarMessage = "Error al asignar la tarea"
+                        .addOnFailureListener { exception ->
+                            onFailure(exception)
                         }
                 }
             }
             .addOnFailureListener { exception ->
-                showSnackbarMessage = "Error al buscar la tarea: ${exception.message}"
+                onFailure(exception)
             }
     }
 
@@ -507,8 +512,26 @@ fun CRUDTareas(
                     confirmButton = {
                         Button(onClick = {
                             if (usuarioSeleccionado.isNotEmpty()) {
-                                asignarTarea(tareaParaAsignar!!, usuarioSeleccionado)
-                                showAsignarDialog = false
+                                asignarTarea(
+                                    tarea = tareaParaAsignar!!,
+                                    usuarioId = usuarioSeleccionado,
+                                    onSuccess = {
+                                        showSnackbarMessage = "Tarea '${tareaParaAsignar!!.nombre}' asignada a ${nombresUsuarios[usuarioSeleccionado]}"
+                                        showAsignarDialog = false
+                                        // Ahora recargas la lista de tareas después de la asignación
+                                        cargarTareasDesdeFirestore(
+                                            groupId = groupId,
+                                            zonaSeleccionada = zonaSeleccionada,
+                                            onSuccess = onTaskListUpdated,
+                                            onFailure = { exception ->
+                                                showSnackbarMessage = "Error al cargar tareas: ${exception.message}"
+                                            }
+                                        )
+                                    },
+                                    onFailure = { exception ->
+                                        showSnackbarMessage = "Error al asignar la tarea: ${exception.message}"
+                                    }
+                                )
                             } else {
                                 Toast.makeText(context, "Selecciona un usuario", Toast.LENGTH_SHORT).show()
                             }
