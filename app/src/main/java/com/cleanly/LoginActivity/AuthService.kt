@@ -2,6 +2,8 @@ package com.cleanly
 
 import android.content.Context
 import android.widget.Toast
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.NavHostController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.userProfileChangeRequest
@@ -60,8 +62,6 @@ fun createAccount(email: String, password: String, nick: String, context: Contex
                 Toast.makeText(context, "Error en el registro: $errorMessage", Toast.LENGTH_LONG).show()
             }
         }
-
-
 }
 
 fun agregarUsuarioAGrupo(
@@ -88,6 +88,43 @@ fun agregarUsuarioAGrupo(
         .addOnFailureListener { exception ->
             Toast.makeText(context, "Error al añadir usuario: ${exception.message}", Toast.LENGTH_SHORT).show()
         }
+}
 
+fun forgotPassword(email: String, context: Context) {
+    // Verificar que el email tenga un formato válido (puedes usar el mismo InputValidator que usas en otros puntos)
+    if (!InputValidator.isEmailValid(email)) {
+        Toast.makeText(context, "Email no válido", Toast.LENGTH_SHORT).show()
+        return
+    }
 
+    // Enviar correo de restablecimiento de contraseña
+    FirebaseAuth.getInstance().sendPasswordResetEmail(email)
+        .addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                Toast.makeText(
+                    context,
+                    "Se ha enviado un correo para restablecer la contraseña",
+                    Toast.LENGTH_SHORT
+                ).show()
+            } else {
+                val errorMessage = task.exception?.localizedMessage ?: "Error desconocido"
+                Toast.makeText(context, "Error: $errorMessage", Toast.LENGTH_SHORT).show()
+            }
+        }
+}
+
+// NUEVA FUNCIÓN: Actualizar contraseña del usuario actual
+fun updatePassword(newPassword: String, context: Context, onComplete: (Boolean, String?) -> Unit) {
+    val user = FirebaseAuth.getInstance().currentUser
+    if (user != null) {
+        user.updatePassword(newPassword).addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                onComplete(true, null)
+            } else {
+                onComplete(false, task.exception?.localizedMessage)
+            }
+        }
+    } else {
+        onComplete(false, "Usuario no autenticado")
+    }
 }

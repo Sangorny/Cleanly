@@ -35,7 +35,7 @@ fun LoginScreen(
     val auth = FirebaseAuth.getInstance()
     val context = navController.context
 
-    // Configure Google Sign-In options with default_web_client_id
+    // Configuración de Google Sign-In
     val googleSignInOptions = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
         .requestIdToken(context.getString(R.string.default_web_client_id))
         .requestEmail()
@@ -80,9 +80,9 @@ fun LoginScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Logo de la aplicación en la pantalla de inicio de sesión
+        // Logo de la aplicación
         Image(
-            painter = painterResource(id = R.drawable.app_logo), // Imagen del logo de la aplicación
+            painter = painterResource(id = R.drawable.app_logo),
             contentDescription = "Logo de Cleanly",
             modifier = Modifier
                 .size(300.dp)
@@ -157,11 +157,30 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Agregamos el enlace para restablecer la contraseña
+        Text(
+            text = "¿Olvidaste tu contraseña?",
+            modifier = Modifier.clickable {
+                if (email.isNotEmpty() && InputValidator.isEmailValid(email)) {
+                    // Llamamos a la función encargada de enviar el correo de restablecimiento.
+                    forgotPassword(email, context)
+                } else {
+                    Toast.makeText(context, "Por favor, ingrese un email válido", Toast.LENGTH_SHORT).show()
+                }
+            },
+            color = Color.White,
+            style = MaterialTheme.typography.bodyMedium
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         Text(
             text = "¿No tienes cuenta? Regístrate",
             modifier = Modifier.clickable {
                 navController.navigate("register")
-            }
+            },
+            color = Color.White,
+            style = MaterialTheme.typography.bodyMedium
         )
     }
 }
