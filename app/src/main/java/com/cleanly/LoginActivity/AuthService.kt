@@ -4,7 +4,6 @@ import android.content.Context
 import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.userProfileChangeRequest
@@ -63,62 +62,6 @@ fun createAccount(email: String, password: String, nick: String, context: Contex
                 Toast.makeText(context, "Error en el registro: $errorMessage", Toast.LENGTH_LONG).show()
             }
         }
-
-
-}
-
-@Composable
-fun CheckAuthentication(navController: NavHostController) {
-    val context = LocalContext.current
-    val auth = FirebaseAuth.getInstance()
-    val currentUser = auth.currentUser
-
-    LaunchedEffect(currentUser) {
-        if (currentUser != null) {
-            currentUser.reload().addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    val firestore = FirebaseFirestore.getInstance()
-                    val userId = currentUser.uid
-
-                    // Verifica si el usuario pertenece a un grupo
-                    firestore.collection("grupos")
-                        .whereEqualTo("usuarios.$userId", true)
-                        .get()
-                        .addOnSuccessListener { querySnapshot ->
-                            if (!querySnapshot.isEmpty) {
-                                navController.navigate("main_screen") {
-                                    popUpTo("check_authentication") { inclusive = true }
-                                    launchSingleTop = true
-                                }
-                            } else {
-                                navController.navigate("group_screen/$userId") {
-                                    popUpTo("check_authentication") { inclusive = true }
-                                    launchSingleTop = true
-                                }
-                            }
-                        }
-                        .addOnFailureListener {
-                            Toast.makeText(
-                                context,
-                                "Error al verificar grupos.",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                } else {
-                    Toast.makeText(context, "Autenticación fallida", Toast.LENGTH_SHORT).show()
-                    navController.navigate("login") {
-                        popUpTo("check_authentication") { inclusive = true }
-                        launchSingleTop = true
-                    }
-                }
-            }
-        } else {
-            navController.navigate("login") {
-                popUpTo("check_authentication") { inclusive = true }
-                launchSingleTop = true
-            }
-        }
-    }
 }
 
 fun agregarUsuarioAGrupo(
@@ -145,6 +88,43 @@ fun agregarUsuarioAGrupo(
         .addOnFailureListener { exception ->
             Toast.makeText(context, "Error al añadir usuario: ${exception.message}", Toast.LENGTH_SHORT).show()
         }
+}
 
+fun forgotPassword(email: String, context: Context) {
+    // Verificar que el email tenga un formato válido (puedes usar el mismo InputValidator que usas en otros puntos)
+    if (!InputValidator.isEmailValid(email)) {
+        Toast.makeText(context, "Email no válido", Toast.LENGTH_SHORT).show()
+        return
+    }
 
+    // Enviar correo de restablecimiento de contraseña
+    FirebaseAuth.getInstance().sendPasswordResetEmail(email)
+        .addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                Toast.makeText(
+                    context,
+                    "Se ha enviado un correo para restablecer la contraseña",
+                    Toast.LENGTH_SHORT
+                ).show()
+            } else {
+                val errorMessage = task.exception?.localizedMessage ?: "Error desconocido"
+                Toast.makeText(context, "Error: $errorMessage", Toast.LENGTH_SHORT).show()
+            }
+        }
+}
+
+// NUEVA FUNCIÓN: Actualizar contraseña del usuario actual
+fun updatePassword(newPassword: String, context: Context, onComplete: (Boolean, String?) -> Unit) {
+    val user = FirebaseAuth.getInstance().currentUser
+    if (user != null) {
+        user.updatePassword(newPassword).addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                onComplete(true, null)
+            } else {
+                onComplete(false, task.exception?.localizedMessage)
+            }
+        }
+    } else {
+        onComplete(false, "Usuario no autenticado")
+    }
 }

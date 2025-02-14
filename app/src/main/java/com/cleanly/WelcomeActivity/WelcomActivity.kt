@@ -46,7 +46,7 @@ class WelcomActivity : ComponentActivity() {
         // (4) Configurar la interfaz de usuario:
         setContent {
             CleanlyTheme {
-                AppNavigation()
+                MainScreen()
             }
         }
     }

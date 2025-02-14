@@ -1,21 +1,17 @@
 package com.cleanly.PerfilActivity
 
-import android.content.Context
 import android.net.Uri
-import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,15 +21,18 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.cleanly.R
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.ui.text.font.FontWeight
+import com.cleanly.updatePassword
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 
@@ -53,12 +52,15 @@ fun ProfileScreen(
     )
     val auth = FirebaseAuth.getInstance()
     val currentUser = auth.currentUser
+
     var displayName by remember { mutableStateOf(currentUser?.displayName ?: "") }
     var email by remember { mutableStateOf(currentUser?.email ?: "") }
     var photoUrl by remember { mutableStateOf<Int>(drawableImages.first()) }
 
-
-
+    // Estados para cambiar la contraseña
+    var currentPassword by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
@@ -68,9 +70,11 @@ fun ProfileScreen(
             )
         },
         content = { padding ->
+            // Se agrega scroll al contenido principal
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
                     .padding(padding)
                     .background(
                         brush = Brush.verticalGradient(
@@ -80,8 +84,9 @@ fun ProfileScreen(
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // Foto de perfil
                 Image(
-                    painter = painterResource(id = photoUrl), // Usa directamente el ID del recurso
+                    painter = painterResource(id = photoUrl),
                     contentDescription = "Foto de perfil",
                     modifier = Modifier
                         .size(100.dp)
@@ -92,6 +97,7 @@ fun ProfileScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                // Selección de avatar mediante LazyRow
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier.padding(vertical = 16.dp)
@@ -104,11 +110,8 @@ fun ProfileScreen(
                             modifier = Modifier
                                 .size(60.dp)
                                 .clip(CircleShape)
-                                .background(if (photoUrl == imageRes) Color.Green else Color.Gray) // Resalta el avatar seleccionado
-                                .clickable {
-                                    // Actualiza el recurso seleccionado
-                                    photoUrl = imageRes
-                                },
+                                .background(if (photoUrl == imageRes) Color.Green else Color.Gray)
+                                .clickable { photoUrl = imageRes },
                             contentScale = ContentScale.Crop
                         )
                     }
@@ -116,7 +119,13 @@ fun ProfileScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text(text = "Nombre", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.White)
+                // Campo para el nombre
+                Text(
+                    text = "Nombre",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = Color.White
+                )
                 BasicTextField(
                     value = displayName,
                     onValueChange = { displayName = it },
@@ -129,7 +138,13 @@ fun ProfileScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text(text = "Correo electrónico", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.White)
+                // Campo para el correo electrónico
+                Text(
+                    text = "Correo electrónico",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = Color.White
+                )
                 BasicTextField(
                     value = email,
                     onValueChange = { email = it },
@@ -145,7 +160,6 @@ fun ProfileScreen(
                 Button(onClick = {
                     if (displayName.isNotBlank() && email.isNotBlank()) {
                         val photoUri = Uri.parse("android.resource://${navController.context.packageName}/$photoUrl")
-
                         updateUserProfile(displayName, photoUri, email, userId) {
                             onProfileUpdated(displayName, photoUri)
                             Toast.makeText(navController.context, "Perfil actualizado correctamente", Toast.LENGTH_SHORT).show()
@@ -156,11 +170,120 @@ fun ProfileScreen(
                 }) {
                     Text("Guardar cambios")
                 }
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // Sección para cambiar la contraseña
+                Text(
+                    text = "Cambiar Contraseña",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = Color.White
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Campo para la contraseña actual (para reautenticarse)
+                Text(
+                    text = "Contraseña actual",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = Color.White
+                )
+                BasicTextField(
+                    value = currentPassword,
+                    onValueChange = { currentPassword = it },
+                    visualTransformation = PasswordVisualTransformation(),
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = Color.White),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color.LightGray, shape = MaterialTheme.shapes.small)
+                        .padding(16.dp)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Campo para la nueva contraseña
+                Text(
+                    text = "Nueva contraseña",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = Color.White
+                )
+                BasicTextField(
+                    value = newPassword,
+                    onValueChange = { newPassword = it },
+                    visualTransformation = PasswordVisualTransformation(),
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = Color.White),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color.LightGray, shape = MaterialTheme.shapes.small)
+                        .padding(16.dp)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Campo para confirmar la nueva contraseña
+                Text(
+                    text = "Confirmar contraseña",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = Color.White
+                )
+                BasicTextField(
+                    value = confirmPassword,
+                    onValueChange = { confirmPassword = it },
+                    visualTransformation = PasswordVisualTransformation(),
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = Color.White),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color.LightGray, shape = MaterialTheme.shapes.small)
+                        .padding(16.dp)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = {
+                        if (currentPassword.isBlank() || newPassword.isBlank() || confirmPassword.isBlank()) {
+                            Toast.makeText(navController.context, "Por favor, rellene todos los campos", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+                        if (newPassword != confirmPassword) {
+                            Toast.makeText(navController.context, "Las contraseñas nuevas no coinciden", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+                        // Reautenticar al usuario con la contraseña actual
+                        reauthenticateUser(currentPassword, navController.context) { reAuthSuccess, reAuthError ->
+                            if (reAuthSuccess) {
+                                // Si la reautenticación es exitosa, actualizar la contraseña mediante AuthService
+                                updatePassword(newPassword, navController.context) { success, errorMessage ->
+                                    if (success) {
+                                        Toast.makeText(navController.context, "Contraseña actualizada correctamente", Toast.LENGTH_SHORT).show()
+                                        currentPassword = ""
+                                        newPassword = ""
+                                        confirmPassword = ""
+                                    } else {
+                                        Toast.makeText(
+                                            navController.context,
+                                            "Error al actualizar contraseña: $errorMessage",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                }
+                            } else {
+                                Toast.makeText(navController.context, "Error al reautenticar: $reAuthError", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Actualizar Contraseña")
+                }
             }
         }
     )
 }
-
 
 private fun updateUserProfile(
     displayName: String,
@@ -171,7 +294,7 @@ private fun updateUserProfile(
 ) {
     val user = FirebaseAuth.getInstance().currentUser
 
-    // Actualiza Firebase Authentication
+    // Actualizar el perfil en Firebase Authentication
     val profileUpdates = UserProfileChangeRequest.Builder()
         .setDisplayName(displayName)
         .setPhotoUri(photoUri)
@@ -180,7 +303,7 @@ private fun updateUserProfile(
     user?.updateProfile(profileUpdates)?.addOnCompleteListener { task ->
         if (task.isSuccessful) {
             Log.d("FirebaseAuthUpdate", "Perfil actualizado correctamente en Firebase Auth")
-            // Busca el grupo del usuario y luego actualiza Firestore
+            // Actualizar Firestore
             findGroupForUser(
                 db = FirebaseFirestore.getInstance(),
                 userId = userId,
@@ -197,7 +320,7 @@ private fun updateUserProfile(
         }
     }
 
-    // Actualiza el correo electrónico también
+    // Actualizar también el correo electrónico
     user?.updateEmail(email)?.addOnCompleteListener { task ->
         if (task.isSuccessful) {
             Log.d("FirebaseAuthUpdate", "Correo actualizado correctamente en Firebase Auth")
@@ -220,7 +343,7 @@ private fun updateUserInFirestore(
     val updates = mapOf(
         "nombre" to displayName,
         "email" to email,
-        "photoUrl" to photoUri.toString(),  // Guarda la URI como String
+        "photoUrl" to photoUri.toString(),
         "uid" to userId
     )
 
@@ -236,24 +359,20 @@ private fun updateUserInFirestore(
 private fun findGroupForUser(
     db: FirebaseFirestore,
     userId: String,
-    onGroupFound: (String) -> Unit,  // Callback que recibe el grupo encontrado
-    onFailure: (Exception) -> Unit   // Callback para manejar errores
+    onGroupFound: (String) -> Unit,
+    onFailure: (Exception) -> Unit
 ) {
-    // Consulta todos los grupos
     db.collection("grupos")
         .get()
         .addOnSuccessListener { querySnapshot ->
             for (group in querySnapshot.documents) {
-                val groupId = group.id // ID del grupo actual
+                val groupId = group.id
                 val userRef = db.collection("grupos").document(groupId).collection("usuarios").document(userId)
-
-                // Verifica si el usuario existe en este grupo
                 userRef.get()
                     .addOnSuccessListener { userDoc ->
                         if (userDoc.exists()) {
-                            // Llama a onGroupFound con el grupo encontrado
                             onGroupFound(groupId)
-                            return@addOnSuccessListener  // No es necesario seguir buscando más grupos
+                            return@addOnSuccessListener
                         }
                     }
                     .addOnFailureListener { exception ->
@@ -266,25 +385,26 @@ private fun findGroupForUser(
         }
 }
 
-
-
-    private fun sendEmailVerification(context: Context) {
-        val user = FirebaseAuth.getInstance().currentUser
-        user?.sendEmailVerification()?.addOnCompleteListener { task ->
+/**
+ * Función para reautenticar al usuario.
+ * Se utiliza la contraseña actual para crear una credencial y reautenticar al usuario.
+ */
+private fun reauthenticateUser(
+    currentPassword: String,
+    context: android.content.Context,
+    onComplete: (Boolean, String?) -> Unit
+) {
+    val user = FirebaseAuth.getInstance().currentUser
+    if (user != null && user.email != null) {
+        val credential = EmailAuthProvider.getCredential(user.email!!, currentPassword)
+        user.reauthenticate(credential).addOnCompleteListener { task ->
             if (task.isSuccessful) {
-                Toast.makeText(context, "Correo de verificación enviado", Toast.LENGTH_SHORT).show()
+                onComplete(true, null)
             } else {
-                Toast.makeText(context, "Error al enviar correo de verificación", Toast.LENGTH_SHORT).show()
+                onComplete(false, task.exception?.localizedMessage)
             }
         }
+    } else {
+        onComplete(false, "Usuario no autenticado")
     }
-
-    private fun resetPassword(email: String, context: Context) {
-        FirebaseAuth.getInstance().sendPasswordResetEmail(email).addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                Toast.makeText(context, "Correo de restablecimiento de contraseña enviado", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(context, "Error al enviar correo de restablecimiento", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
+}

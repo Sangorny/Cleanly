@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.cleanly.R
 import com.google.android.gms.tasks.Tasks
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import java.util.*
@@ -37,8 +38,9 @@ fun EstadisticasScreen(
     var memberScores by remember { mutableStateOf<List<Pair<String, Int>>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var victories by remember { mutableStateOf(0) }
+    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
-    LaunchedEffect(groupId) {
+    LaunchedEffect(groupId, currentUserId) {
         fetchMemberRanking(groupId, firestore) { scores ->
             memberScores = scores.map { (uid, score) ->
                 val name = nombresUsuarios[uid] ?: "Usuario desconocido"
@@ -47,15 +49,17 @@ fun EstadisticasScreen(
             isLoading = false
 
             if (scores.isNotEmpty()) {
-                val winnerId = scores[0].first
-
-                fetchVictories(groupId, firestore, winnerId) { victoriesCount ->
+                fetchVictories(groupId, firestore, currentUserId) { victoriesCount ->
                     victories = victoriesCount
                 }
             }
         }
+
+        // Invoca el reset de puntuaciones correctamente con el contexto adecuado
         scheduleResetScores(groupId, firestore)
     }
+
+
 
 
     Scaffold(
@@ -151,27 +155,26 @@ fun EstadisticasScreen(
     }
 }
 
-fun fetchVictories(groupId: String, firestore: FirebaseFirestore, winnerId: String, onResult: (Int) -> Unit) {
-    val victoriesRef = firestore.collection("grupos").document(groupId).collection("victorias").document(winnerId)
+fun fetchVictories(groupId: String, firestore: FirebaseFirestore, userId: String, onResult: (Int) -> Unit) {
+    val victoriesRef = firestore.collection("grupos").document(groupId).collection("victorias").document(userId)
 
-    victoriesRef.get()
-        .addOnSuccessListener { document ->
-            val victories = document.getLong("count")?.toInt() ?: 0
-            onResult(victories)
-        }
-        .addOnFailureListener {
-            Log.e("EstadisticasScreen", "Error al obtener victorias: ${it.message}")
-            onResult(0)
-        }
+    victoriesRef.get().addOnSuccessListener { document ->
+        val victories = document.getLong("count")?.toInt() ?: 0
+        onResult(victories)
+    }.addOnFailureListener { e ->
+        Log.e("fetchVictories", "Error al obtener victorias: ${e.message}")
+        onResult(0) // Devuelve 0 en caso de error
+    }
 }
+
 
 
 fun scheduleResetScores(groupId: String, firestore: FirebaseFirestore) {
     val now = Calendar.getInstance()
     val resetTime = Calendar.getInstance().apply {
-        set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY)
-        set(Calendar.HOUR_OF_DAY, 23)
-        set(Calendar.MINUTE, 59)
+        set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
         set(Calendar.SECOND, 0)
         set(Calendar.MILLISECOND, 0)
         if (this.timeInMillis <= now.timeInMillis) {
@@ -184,9 +187,8 @@ fun scheduleResetScores(groupId: String, firestore: FirebaseFirestore) {
     Log.d("scheduleResetScores", "Puntuaciones se resetearán en $delay ms")
 
     Handler(Looper.getMainLooper()).postDelayed({
-        resetScores(groupId, firestore) { updatedScores, updatedVictories ->
+        resetScores(groupId, firestore) {
             Log.d("scheduleResetScores", "Clasificación actualizada tras el reset")
-            Log.d("scheduleResetScores", "Victorias: $updatedVictories")
         }
     }, delay)
 }
@@ -201,105 +203,92 @@ fun fetchMemberRanking(
     val groupUsersRef = firestore.collection("grupos").document(groupId).collection("usuarios")
     val groupTasksRef = firestore.collection("grupos").document(groupId).collection("mistareas")
 
-    val usersListener = groupUsersRef.addSnapshotListener { userSnapshots, error ->
-        if (error != null) {
-            Log.e("fetchMemberRanking", "Error en listener de usuarios: ${error.message}")
-            return@addSnapshotListener
-        }
+    groupUsersRef.get().addOnSuccessListener { userSnapshots ->
+        val validUserIds = userSnapshots.documents.map { it.id }.toSet()
 
-        val validUserIds = userSnapshots?.documents?.map { it.id }?.toSet() ?: emptySet()
-        val uidToNameMap = userSnapshots?.documents?.associate {
-            it.id to (it.getString("nombre") ?: "Usuario desconocido")
-        } ?: emptyMap()
-
-        val tasksListener = groupTasksRef.addSnapshotListener { taskSnapshots, taskError ->
-            if (taskError != null) {
-                Log.e("fetchMemberRanking", "Error en listener de tareas: ${taskError.message}")
-                return@addSnapshotListener
-            }
-
+        groupTasksRef.get().addOnSuccessListener { taskSnapshots ->
             val uidToScoreMap = mutableMapOf<String, Int>()
-            taskSnapshots?.documents?.forEach { taskDoc ->
+
+            taskSnapshots.documents.forEach { taskDoc ->
                 val uid = taskDoc.getString("usuario") ?: return@forEach
                 val points = taskDoc.getLong("puntos")?.toInt() ?: 0
+                val completadoPor = taskDoc.getString("completadoPor") ?: ""
 
-                if (validUserIds.contains(uid)) {
+                // Verificar que la tarea esté completada antes de sumar los puntos
+                if (completadoPor.isNotEmpty() && validUserIds.contains(uid)) {
                     uidToScoreMap[uid] = uidToScoreMap.getOrDefault(uid, 0) + points
-                } else {
-                    taskDoc.reference.delete().addOnFailureListener { e ->
-                        Log.e("fetchMemberRanking", "Error al eliminar tarea: ${e.message}")
-                    }
                 }
             }
 
-            // Cambiar para usar el UID en lugar del nombre
-            val ranking = uidToScoreMap.map { (uid, score) ->
-                uid to score
-            }.sortedByDescending { it.second }
+            // Ordenar el ranking en orden descendente por puntuación
+            val ranking = uidToScoreMap.map { (uid, score) -> uid to score }
+                .sortedByDescending { it.second }
 
             onResult(ranking)
+        }.addOnFailureListener { e ->
+            Log.e("fetchMemberRanking", "Error al obtener tareas: ${e.message}")
         }
+    }.addOnFailureListener { e ->
+        Log.e("fetchMemberRanking", "Error al obtener usuarios: ${e.message}")
     }
 }
+
+private var resetInProgress = false
 
 fun resetScores(
     groupId: String,
     firestore: FirebaseFirestore,
-    onRankingUpdated: (List<Pair<String, Int>>, Int) -> Unit
+    onResetCompleted: () -> Unit = {}
 ) {
-    val groupUsersRef = firestore.collection("grupos").document(groupId).collection("usuarios")
+    val groupVictoriesRef = firestore.collection("grupos").document(groupId).collection("victorias")
     val groupTasksRef = firestore.collection("grupos").document(groupId).collection("mistareas")
-    val victoriesRef = firestore.collection("grupos").document(groupId).collection("victorias")
 
-    groupUsersRef.get().addOnSuccessListener { userSnapshots ->
-        val userIds = userSnapshots.documents.map { it.id }
+    // Verificar si ya está en progreso para evitar duplicidades
+    if (resetInProgress) {
+        Log.d("resetScores", "Reseteo ya está en progreso. Cancelando ejecución duplicada.")
+        return
+    }
 
-        fetchMemberRanking(groupId, firestore) { scores ->
-            if (scores.isNotEmpty()) {
-                val winnerId = scores[0].first
+    resetInProgress = true // Marcar como en progreso
 
-                // Sumar la victoria al ganador
-                victoriesRef.document(winnerId).update("count", FieldValue.increment(1))
+    // Obtener la clasificación actual
+    fetchMemberRanking(groupId, firestore) { ranking ->
+        if (ranking.isNotEmpty()) {
+            val ganador = ranking.first().first
+
+            // Incrementar la victoria solo una vez
+            // Incrementar la victoria del usuario ganador en un documento personal dentro del grupo
+            groupVictoriesRef.document(ganador).get().addOnSuccessListener { doc ->
+                val currentVictories = doc.getLong("count")?.toInt() ?: 0
+                val newVictories = currentVictories + 1
+
+                groupVictoriesRef.document(ganador)
+                    .set(mapOf("count" to newVictories))
                     .addOnSuccessListener {
-                        Log.d("resetScores", "Victoria sumada correctamente para $winnerId")
-
-                        // Crear tareas para resetear puntos de usuarios y tareas
-                        val resetUserTasks = userIds.map { userId ->
-                            groupUsersRef.document(userId).update("puntos", 0)
-                        }
-
-                        val resetTaskPoints = groupTasksRef.get().continueWithTask { task ->
-                            val resetTasks = task.result?.documents?.map { taskDoc ->
-                                taskDoc.reference.update("puntos", 0)
-                            } ?: emptyList()
-                            Tasks.whenAll(resetTasks)  // Asegurarnos de esperar todas las actualizaciones de tareas
-                        }
-
-                        // Esperar a que todas las tareas se completen
-                        Tasks.whenAll(resetUserTasks + resetTaskPoints).addOnSuccessListener {
-                            Log.d("resetScores", "Reseteo completado correctamente")
-
-                            // Leer el valor actualizado de victorias
-                            victoriesRef.document(winnerId).get().addOnSuccessListener { document ->
-                                val updatedVictories = document.getLong("count")?.toInt() ?: 0
-
-                                // Actualizar la clasificación y las victorias en la UI
-                                fetchMemberRanking(groupId, firestore) { updatedScores ->
-                                    onRankingUpdated(updatedScores, updatedVictories)
-                                }
-                            }
-                        }.addOnFailureListener { e ->
-                            Log.e("resetScores", "Error durante el reseteo: ${e.message}")
-                        }
+                        Log.d("resetScores", "Victoria sumada correctamente para $ganador")
                     }
                     .addOnFailureListener { e ->
                         Log.e("resetScores", "Error al sumar victoria: ${e.message}")
                     }
-            } else {
-                Log.d("resetScores", "No hay usuarios con puntuación para procesar.")
             }
+
+
+            // Resetear solo tareas completadas
+            groupTasksRef.whereNotEqualTo("completadoPor", "")
+                .get()
+                .addOnSuccessListener { completedTasks ->
+                    completedTasks.documents.forEach { taskDoc ->
+                        taskDoc.reference.update("puntos", 0)
+                    }
+                    Log.d("resetScores", "Reseteo completado correctamente")
+                    onResetCompleted()
+                }
+                .addOnFailureListener { e ->
+                    Log.e("resetScores", "Error al resetear tareas: ${e.message}")
+                }
+                .addOnCompleteListener { task ->
+                    resetInProgress = false // Resetear bandera al finalizar
+                }
         }
-    }.addOnFailureListener { e ->
-        Log.e("resetScores", "Error al obtener usuarios del grupo: ${e.message}")
     }
 }
