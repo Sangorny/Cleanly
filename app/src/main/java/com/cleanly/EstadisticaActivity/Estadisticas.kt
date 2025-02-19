@@ -172,9 +172,9 @@ fun fetchVictories(groupId: String, firestore: FirebaseFirestore, userId: String
 fun scheduleResetScores(groupId: String, firestore: FirebaseFirestore) {
     val now = Calendar.getInstance()
     val resetTime = Calendar.getInstance().apply {
-        set(Calendar.DAY_OF_WEEK, Calendar.WEDNESDAY)
-        set(Calendar.HOUR_OF_DAY, 8)
-        set(Calendar.MINUTE, 50)
+        set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY)
+        set(Calendar.HOUR_OF_DAY, 23)
+        set(Calendar.MINUTE, 59)
         set(Calendar.SECOND, 59)
         set(Calendar.MILLISECOND, 0)
         if (this.timeInMillis <= now.timeInMillis) {
