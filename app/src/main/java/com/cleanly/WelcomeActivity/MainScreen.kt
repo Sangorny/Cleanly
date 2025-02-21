@@ -278,7 +278,7 @@ fun MainScreen(
                 composable("programar") {
                     groupId?.let { safeGroupId ->
                         if (safeGroupId != "singrupo") {
-                            ProgramarScreen(navController = navController, groupId = safeGroupId)
+                            ProgramarScreen(navController = navController, groupId = safeGroupId,isAdmin = isAdmin)
                         } else {
                             navController.navigate("group_screen/${currentUser?.uid ?: ""}")
                         }

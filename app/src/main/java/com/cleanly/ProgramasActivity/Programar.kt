@@ -50,8 +50,9 @@ data class Tarea(
     val subzona: String = ""
 )
 
+
 @Composable
-fun ProgramarScreen(navController: NavHostController, groupId: String) {
+fun ProgramarScreen(navController: NavHostController, groupId: String, isAdmin: Boolean) {
     var todasLasTareas by remember { mutableStateOf<List<Tarea>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var tareaSeleccionada by remember { mutableStateOf<Tarea?>(null) }
@@ -70,7 +71,6 @@ fun ProgramarScreen(navController: NavHostController, groupId: String) {
         }
     }
 
-
     LaunchedEffect(Unit) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
@@ -78,6 +78,7 @@ fun ProgramarScreen(navController: NavHostController, groupId: String) {
             launcher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
         }
 
+        // Cargar tareas desde Firestore
         if (groupId.isNotEmpty()) {
             cargarTodasLasTareasDesdeFirestore(
                 db = firestore,
@@ -91,6 +92,9 @@ fun ProgramarScreen(navController: NavHostController, groupId: String) {
                     Log.e("ProgramarScreen", "Error al cargar tareas")
                 }
             )
+            // Aquí se programa el reset y el worker de sincronización
+            programarTaskSync(context, groupId)
+            scheduleInitialReset(context, isAdmin, groupId)
         } else {
             isLoading = false
             Log.e("ProgramarScreen", "GroupId está vacío")
@@ -126,7 +130,6 @@ fun ProgramarScreen(navController: NavHostController, groupId: String) {
                             color = Color.White
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-
                         TabRow(
                             selectedTabIndex = selectedTabIndex,
                             containerColor = Color(0xFF0D47A1),
@@ -147,9 +150,7 @@ fun ProgramarScreen(navController: NavHostController, groupId: String) {
                                 )
                             }
                         }
-
                         Spacer(modifier = Modifier.height(16.dp))
-
                         val tareasFiltradas = when (selectedTabIndex) {
                             0 -> todasLasTareas.filter { it.frecuencia.isEmpty() }
                             1 -> todasLasTareas.filter { it.frecuencia == "Diaria" }
@@ -157,7 +158,6 @@ fun ProgramarScreen(navController: NavHostController, groupId: String) {
                             3 -> todasLasTareas.filter { it.frecuencia == "Mensual" }
                             else -> emptyList()
                         }
-
                         MostrarTareasPorZona(
                             tareas = tareasFiltradas,
                             onProgramarTarea = { tarea ->
@@ -189,9 +189,7 @@ fun ProgramarScreen(navController: NavHostController, groupId: String) {
                                     mostrarDialogo = false
                                 }
                             )
-                        }) {
-                            Text("Diaria")
-                        }
+                        }) { Text("Diaria") }
                         Spacer(modifier = Modifier.height(8.dp))
                         Button(onClick = {
                             actualizarFrecuencia(
@@ -204,9 +202,7 @@ fun ProgramarScreen(navController: NavHostController, groupId: String) {
                                     mostrarDialogo = false
                                 }
                             )
-                        }) {
-                            Text("Semanal")
-                        }
+                        }) { Text("Semanal") }
                         Spacer(modifier = Modifier.height(8.dp))
                         Button(onClick = {
                             actualizarFrecuencia(
@@ -219,9 +215,7 @@ fun ProgramarScreen(navController: NavHostController, groupId: String) {
                                     mostrarDialogo = false
                                 }
                             )
-                        }) {
-                            Text("Mensual")
-                        }
+                        }) { Text("Mensual") }
                         Spacer(modifier = Modifier.height(8.dp))
                         Button(onClick = {
                             actualizarFrecuencia(
@@ -234,15 +228,11 @@ fun ProgramarScreen(navController: NavHostController, groupId: String) {
                                     mostrarDialogo = false
                                 }
                             )
-                        }) {
-                            Text("Quitar programación")
-                        }
+                        }) { Text("Quitar programación") }
                     }
                 },
                 confirmButton = {
-                    Button(onClick = { mostrarDialogo = false }) {
-                        Text("Cancelar")
-                    }
+                    Button(onClick = { mostrarDialogo = false }) { Text("Cancelar") }
                 }
             )
         }

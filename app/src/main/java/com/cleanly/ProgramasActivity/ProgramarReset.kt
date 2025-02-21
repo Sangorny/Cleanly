@@ -36,7 +36,6 @@ fun programarTaskSync(context: Context, groupId: String) {
         taskSyncWorkRequest
     )
 
-    Log.d("TaskSyncWorker", "Worker programado para groupId: $groupId cada 15 minutos.")
 }
 
 // Configurar el calendario para obtener las 23:59 del día en curso (o del siguiente si ya pasó)
