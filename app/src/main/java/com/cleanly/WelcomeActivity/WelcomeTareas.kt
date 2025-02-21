@@ -1,6 +1,5 @@
 package com.cleanly
 
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,6 +11,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.cleanly.shared.Tarea
+
+
+//Agrupa tareas a nivel visual
 
 @Composable
 fun MostrarTareasFiltradas(
@@ -81,7 +83,6 @@ fun TareaItem(
             )
 
             if (mostrarAsignado && !tarea.usuario.isNullOrEmpty()) {
-                // Usa el valor actual de tarea.usuario, que debería ser el nombre ya traducido
                 Text(
                     text = tarea.usuario,
                     color = Color.Yellow

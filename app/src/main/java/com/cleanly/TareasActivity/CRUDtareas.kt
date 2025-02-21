@@ -29,8 +29,8 @@ data class Tarea(
     val puntos: Int,
     val zona: String,
     val subzona: String = "Sin Subzona",
-    val prioridad: String = "Baja", // Valor predeterminado
-    val usuario: String = "", // UID del usuario asignado (vacío si no está asignada)
+    val prioridad: String = "Baja",
+    val usuario: String = "",
     var isChecked: Boolean = false,
 )
 
@@ -76,7 +76,7 @@ fun CRUDTareas(
         onSuccess: () -> Unit
     ) {
         val db = FirebaseFirestore.getInstance()
-        val groupRef = db.collection("grupos").document(groupId) // Referencia al grupo
+        val groupRef = db.collection("grupos").document(groupId)
         val tarea = hashMapOf(
             "nombre" to nombre,
             "puntos" to puntos,
@@ -113,11 +113,11 @@ fun CRUDTareas(
         }
 
         val db = FirebaseFirestore.getInstance()
-        val groupRef = db.collection("grupos").document(groupId) // Referencia al grupo
+        val groupRef = db.collection("grupos").document(groupId)
 
         // Consultar la subcolección "mistareas" del grupo
         groupRef.collection("mistareas")
-            .whereEqualTo("zona", zonaSeleccionada) // Filtrar por zona
+            .whereEqualTo("zona", zonaSeleccionada)
             .get()
             .addOnSuccessListener { result ->
                 // Convertir los documentos en objetos Tarea
@@ -125,29 +125,28 @@ fun CRUDTareas(
                     val nombre = document.getString("nombre") ?: return@mapNotNull null
                     val puntos = document.getLong("puntos")?.toInt() ?: return@mapNotNull null
                     val subzona = document.getString("subzona") ?: "Sin Subzona"
-                    val prioridad = document.getString("prioridad") ?: "Baja" // Obtén la prioridad
-                    val usuario = document.getString("usuario") ?: "" // Obtén el usuario asignado o valor predeterminado
-                    Tarea(nombre, puntos, zonaSeleccionada, subzona, prioridad, usuario) // Incluye usuario
+                    val prioridad = document.getString("prioridad") ?: "Baja"
+                    val usuario = document.getString("usuario") ?: ""
+                    Tarea(nombre, puntos, zonaSeleccionada, subzona, prioridad, usuario)
                 }
-                onSuccess(listaTareas) // Llamar al callback de éxito con las tareas cargadas
+                onSuccess(listaTareas)
             }
             .addOnFailureListener { exception ->
-                onFailure(exception) // Llamar al callback de error con la excepción
+                onFailure(exception)
             }
     }
 
     // Llamar a cargar tareas al montar el componente
-    LaunchedEffect(zonaSeleccionada, groupId) { // Agrega groupId como dependencia del efecto
-        if (groupId.isNotEmpty()) { // Asegúrate de que groupId esté definido
+    LaunchedEffect(zonaSeleccionada, groupId) {
+        if (groupId.isNotEmpty()) {
             cargarTareasDesdeFirestore(
-                groupId = groupId, // Pasa el groupId necesario
+                groupId = groupId,
                 zonaSeleccionada = zonaSeleccionada,
                 onSuccess = { listaTareas ->
-                    onTaskListUpdated(listaTareas) // Actualiza la lista de tareas
+                    onTaskListUpdated(listaTareas)
                 },
                 onFailure = { exception ->
                     Log.e("CargarTareas", "Error al cargar tareas: ${exception.message}")
-                    // Maneja el error, por ejemplo, con un mensaje en pantalla
                 }
             )
         } else {
@@ -156,13 +155,13 @@ fun CRUDTareas(
     }
     // Función para eliminar tareas
     fun eliminarTareasDeFirestore(
-        groupId: String, // Se incluye el groupId como parámetro
+        groupId: String,
         nombresDeTareas: List<String>,
         context: Context,
         onSuccess: () -> Unit
     ) {
         val db = FirebaseFirestore.getInstance()
-        val groupRef = db.collection("grupos").document(groupId) // Referencia al grupo
+        val groupRef = db.collection("grupos").document(groupId)
 
         nombresDeTareas.forEach { nombre ->
             groupRef.collection("mistareas")
@@ -238,7 +237,7 @@ fun CRUDTareas(
 
     fun editarTareaEnFirestore(
         groupId: String,
-        nombreOriginal: String,    // Así localizas la tarea exacta
+        nombreOriginal: String,
         nuevoNombre: String,
         nuevosPuntos: Int,
         nuevaSubzona: String,
@@ -250,7 +249,7 @@ fun CRUDTareas(
         val groupRef = db.collection("grupos").document(groupId)
 
         groupRef.collection("mistareas")
-            .whereEqualTo("nombre", nombreOriginal) // Filtra por el nombre original
+            .whereEqualTo("nombre", nombreOriginal)
             .get()
             .addOnSuccessListener { querySnapshot ->
                 if (querySnapshot.isEmpty) {
@@ -286,7 +285,7 @@ fun CRUDTareas(
     val handleCreate = {
         if (taskName.isNotBlank() && taskPoints.isNotBlank()) {
             agregarTareaAFirestore(
-                groupId = groupId, // Utilizar el groupId ya definido
+                groupId = groupId,
                 nombre = taskName,
                 puntos = taskPoints.toInt(),
                 zona = zonaSeleccionada,
@@ -412,14 +411,14 @@ fun CRUDTareas(
 
             if (isAdmin) {
                 VisualBoton(
-                    onCreate = { showDialog = true }, // Activa el cuadro de diálogo
+                    onCreate = { showDialog = true },
                     onEdit = handleEdit,
                     onDelete = handleDelete,
-                    onList = { /* lógica para listar tareas */ },
+                    onList = {},
                     onAsignar = handleAsignar
                 )
 
-                Spacer(modifier = Modifier.height(16.dp)) // Espaciador adicional si es necesario
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -428,7 +427,7 @@ fun CRUDTareas(
                 TaskRow(
                     task = tarea.nombre,
                     subzona = tarea.subzona,
-                    prioridad = tarea.prioridad, // Asegúrate de que esta propiedad exista en el modelo
+                    prioridad = tarea.prioridad,
                     asignadoA = nombresUsuarios[tarea.usuario],
                     puntos = tarea.puntos,
                     isChecked = checkedStates[tarea.nombre] ?: false,
@@ -475,9 +474,9 @@ fun CRUDTareas(
                             Spacer(modifier = Modifier.height(8.dp))
                             Text("Prioridad:")
                             DropdownPrioridad(
-                                selectedPriority = selectedPriority, // Estado actual de la prioridad
+                                selectedPriority = selectedPriority,
                                 onPriorityChange = { newPriority ->
-                                    selectedPriority = newPriority // Actualiza el estado
+                                    selectedPriority = newPriority
                                 }
                             )
                         }
@@ -721,14 +720,14 @@ fun TaskRow(
     }
 }
 
-
+//Poder bajar en la ventana
 @Composable
 fun DropdownPrioridad(
     selectedPriority: String,
     onPriorityChange: (String) -> Unit
 ) {
-    var expanded by remember { mutableStateOf(false) } // Controla si el menú está expandido o no
-    val priorities = listOf("Baja", "Media", "Urgente") // Lista de prioridades predeterminadas
+    var expanded by remember { mutableStateOf(false) }
+    val priorities = listOf("Baja", "Media", "Urgente")
 
     Box(
         modifier = Modifier
@@ -739,7 +738,7 @@ fun DropdownPrioridad(
             onClick = { expanded = true },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(text = selectedPriority) // Muestra la prioridad seleccionada
+            Text(text = selectedPriority)
         }
 
         DropdownMenu(
@@ -750,8 +749,8 @@ fun DropdownPrioridad(
                 DropdownMenuItem(
                     text = { Text(priority) },
                     onClick = {
-                        onPriorityChange(priority) // Notifica el cambio al padre
-                        expanded = false // Cierra el menú
+                        onPriorityChange(priority)
+                        expanded = false
                     }
                 )
             }

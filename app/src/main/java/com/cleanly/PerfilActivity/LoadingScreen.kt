@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.cleanly.R
 
 
+//Pantalla de carga secundaria
 @Composable
 fun LoadingScreen(
     isLoading: Boolean,
@@ -28,7 +29,7 @@ fun LoadingScreen(
 ) {
     LaunchedEffect(isLoading) {
         if (!isLoading) {
-            onComplete() // Llamar al callback cuando termine la carga
+            onComplete()
         }
     }
 
@@ -54,7 +55,7 @@ fun LoadingScreen(
                 modifier = Modifier.size(300.dp)
             )
             Spacer(modifier = Modifier.height(16.dp))
-            CircularProgressIndicator() // Indicador de carga
+            CircularProgressIndicator()
         }
     }
 }

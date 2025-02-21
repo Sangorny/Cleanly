@@ -16,27 +16,24 @@ import androidx.navigation.NavHostController
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
 
+// Pantalla de carga
 @Composable
 fun SplashScreen(navController: NavHostController) {
-    // Verificar autenticación del usuario en el inicio
+
     val auth = FirebaseAuth.getInstance()
     LaunchedEffect(Unit) {
-        delay(3000) // Tiempo de espera opcional en el SplashScreen
+        delay(3000)
 
         if (auth.currentUser != null) {
-            // Usuario autenticado, iniciar TareaActivity
             val intent = Intent(navController.context, TareaActivity::class.java)
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             navController.context.startActivity(intent)
         } else {
-            // Usuario no autenticado, ir a LoginScreen
             navController.navigate("login") {
                 popUpTo("splash") { inclusive = true }
             }
         }
     }
-
-    // Interfaz de usuario del SplashScreen
     Column(
         modifier = Modifier
             .fillMaxSize()

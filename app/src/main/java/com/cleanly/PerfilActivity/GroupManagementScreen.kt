@@ -29,7 +29,7 @@ data class Group(
     val points: Map<String, Int> = emptyMap()
 )
 
-
+// Pantalla para manejar los grupos
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GroupManagementScreen(
@@ -172,7 +172,7 @@ fun GroupManagementScreen(
 
                         if (showConfirmationDialog) {
                             ConfirmationDialog(
-                                isAdmin = isAdmin,  // <-- aquí pasas si es admin o no
+                                isAdmin = isAdmin,
                                 onConfirm = {
                                     isLeavingGroup = true
                                     leaveGroupAndRedirect(
@@ -295,12 +295,13 @@ fun fetchGroupMembers(groupId: String, firestore: FirebaseFirestore, onResult: (
         }
 }
 
+// Dejar el grupo
 fun leaveGroupAndRedirect(
     navController: NavHostController,
     userId: String,
     groupId: String,
     firestore: FirebaseFirestore,
-    isAdmin: Boolean,            // <--- Recibimos si el usuario es o no admin
+    isAdmin: Boolean,
     onGroupLeft: () -> Unit,
     onComplete: () -> Unit
 ) {

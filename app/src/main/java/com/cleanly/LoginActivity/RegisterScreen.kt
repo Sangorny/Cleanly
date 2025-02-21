@@ -22,6 +22,8 @@ import com.google.firebase.auth.FirebaseAuth
 import com.cleanly.R
 import com.cleanly.createAccount
 
+
+// Pantalla de Registro de la aplicacion
 @Composable
 fun RegisterScreen(navController: NavHostController) {
     var email by remember { mutableStateOf("") }
@@ -45,9 +47,8 @@ fun RegisterScreen(navController: NavHostController) {
     ) {
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Logo de la app
         Image(
-            painter = painterResource(id = R.drawable.app_logo), // Asegúrate de tener un logo en drawable
+            painter = painterResource(id = R.drawable.app_logo),
             contentDescription = "App Logo",
             modifier = Modifier
                 .size(120.dp)
@@ -56,7 +57,6 @@ fun RegisterScreen(navController: NavHostController) {
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Formulario de registro
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -72,7 +72,7 @@ fun RegisterScreen(navController: NavHostController) {
                     onValueChange = { email = it },
                     label = { Text("Email") },
                     modifier = Modifier.fillMaxWidth(),
-                    textStyle = TextStyle(color = Color.Black) // Texto de color negro
+                    textStyle = TextStyle(color = Color.Black)
                 )
 
                 OutlinedTextField(
@@ -81,7 +81,7 @@ fun RegisterScreen(navController: NavHostController) {
                     label = { Text("Password") },
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth(),
-                    textStyle = TextStyle(color = Color.Black) // Texto de color negro
+                    textStyle = TextStyle(color = Color.Black)
                 )
 
                 OutlinedTextField(
@@ -90,7 +90,7 @@ fun RegisterScreen(navController: NavHostController) {
                     label = { Text("Repite la contraseña") },
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth(),
-                    textStyle = TextStyle(color = Color.Black) // Texto de color negro
+                    textStyle = TextStyle(color = Color.Black)
                 )
 
                 OutlinedTextField(
@@ -98,7 +98,7 @@ fun RegisterScreen(navController: NavHostController) {
                     onValueChange = { nick = it },
                     label = { Text("Nick") },
                     modifier = Modifier.fillMaxWidth(),
-                    textStyle = TextStyle(color = Color.Black) // Texto de color negro
+                    textStyle = TextStyle(color = Color.Black)
                 )
 
                 Button(
@@ -122,8 +122,6 @@ fun RegisterScreen(navController: NavHostController) {
         }
 
         Spacer(modifier = Modifier.height(20.dp))
-
-        // Instrucciones para el usuario
         Text(
             text = "El email debe ser example@example.com\nLa contraseña debe tener al menos 6 caracteres.",
             fontSize = 14.sp,

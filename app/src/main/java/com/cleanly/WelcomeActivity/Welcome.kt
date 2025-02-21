@@ -114,6 +114,7 @@ fun Welcome(
                         Spacer(modifier = Modifier.height(16.dp))
 
                         when (selectedTabIndex) {
+                            // Tareas Asignadas al propio User
                             0 -> MostrarTareasFiltradas(
                                 tareas.filter {
                                     it.usuario == FirebaseAuth.getInstance().currentUser?.uid &&
@@ -121,7 +122,7 @@ fun Welcome(
                                 },
                                 onTareaClick = { /* No se usa aquí */ },
                                 mostrarAsignado = true,
-                                nombresUsuarios = nombresUsuarios, // Pasar mapa de nombres
+                                nombresUsuarios = nombresUsuarios,
                                 onCompletarTarea = { tarea ->
                                     completarTarea(
                                         db = FirebaseFirestore.getInstance(),
@@ -137,11 +138,12 @@ fun Welcome(
                                     }
                                 }
                             )
+                            // Tareas completadas: Tareas que están pendientes
                             1 -> MostrarTareasFiltradas(
                                 tareas.filter { it.usuario.isNullOrEmpty() && it.completadoPor.isNullOrEmpty()},
                                 onTareaClick = { /* No se usa aquí */ },
                                 mostrarAsignado = false,
-                                nombresUsuarios = nombresUsuarios, // Pasar mapa de nombres
+                                nombresUsuarios = nombresUsuarios,
                                 onAsignarTarea = { tarea ->
                                     asignarTareaAlUsuario(
                                         db = FirebaseFirestore.getInstance(),
@@ -157,18 +159,18 @@ fun Welcome(
                                     }
                                 }
                             )
+                            // Tareas completadas: Tareas de Otros
                             2 -> MostrarTareasFiltradas(
                                 tareas.filter { it.usuario != FirebaseAuth.getInstance().currentUser?.uid && !it.usuario.isNullOrEmpty() && it.completadoPor.isNullOrEmpty()},
                                 onTareaClick = onTareaClick,
                                 mostrarAsignado = true,
-                                nombresUsuarios = nombresUsuarios // Pasar mapa de nombres
+                                nombresUsuarios = nombresUsuarios
                             )
 
                             // Tareas completadas: se muestran aquellas que ya tienen definido el campo completadoPor.
                             3 -> MostrarTareasFiltradas(
                                 tareas.filter { it.completadoPor != null && it.completadoPor.isNotEmpty() },
                                 onTareaClick = onTareaClick,
-                                // En este caso, puede que quieras seguir mostrando el usuario que completó la tarea.
                                 mostrarAsignado = true,
                                 nombresUsuarios = nombresUsuarios
                             )

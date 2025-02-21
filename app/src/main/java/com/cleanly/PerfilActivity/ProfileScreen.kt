@@ -300,10 +300,10 @@ private fun updateUserProfile(
         .setPhotoUri(photoUri)
         .build()
 
+    // Actualizar Firestore
     user?.updateProfile(profileUpdates)?.addOnCompleteListener { task ->
         if (task.isSuccessful) {
             Log.d("FirebaseAuthUpdate", "Perfil actualizado correctamente en Firebase Auth")
-            // Actualizar Firestore
             findGroupForUser(
                 db = FirebaseFirestore.getInstance(),
                 userId = userId,

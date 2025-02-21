@@ -24,6 +24,8 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 
+
+//Pantalla de Login principal
 @Composable
 fun LoginScreen(
     navController: NavHostController,

@@ -20,20 +20,18 @@ class TareaActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val zonaSeleccionada = intent.getStringExtra("zona") ?: "" // Obtener la zona seleccionada
+        val zonaSeleccionada = intent.getStringExtra("zona") ?: ""
 
         setContent {
             CleanlyTheme {
-                val navController = rememberNavController() // Crear NavController
+                val navController = rememberNavController()
                 MainScreen(
                     onNavigateToTarea = { tarea ->
-                        // Manejar navegación desde tareas (puede estar vacío si no es necesario)
                     },
                     onNavigateToZonas = {
-                        // Navegación a ZonasActivity
                         navController.navigate("zonas")
                     },
-                    zonaSeleccionada = zonaSeleccionada // Pasar la zona seleccionada
+                    zonaSeleccionada = zonaSeleccionada
                 )
             }
         }
@@ -79,7 +77,6 @@ fun TareaScreen(navController: NavHostController,
                 onSuccess(listaTareas)
             }
             .addOnFailureListener {
-                // Manejar el error, si es necesario
             }
     }
 
@@ -135,6 +132,5 @@ private fun reloadTaskList(
             updateTaskList(listaTareas)
         }
         .addOnFailureListener {
-            // Manejar el error, si es necesario
         }
 }

@@ -117,17 +117,15 @@ class TaskSyncWorker(context: Context, params: WorkerParameters) : Worker(contex
 
     private fun programarProximoWorker(context: Context, groupId: String) {
         val now = Calendar.getInstance()
-        now.add(Calendar.MINUTE, 15) // Programa para dentro de 15 minutos
+        now.add(Calendar.MINUTE, 15)
         now.set(Calendar.SECOND, 0)
         now.set(Calendar.MILLISECOND, 0)
 
         var delayMillis = now.timeInMillis - System.currentTimeMillis()
         if (delayMillis <= 0) {
             Log.e("TaskSyncWorker", "Error: delayMillis negativo ($delayMillis), ajustando a 15 minutos.")
-            delayMillis = TimeUnit.MINUTES.toMillis(15) // Evita valores negativos
+            delayMillis = TimeUnit.MINUTES.toMillis(15)
         }
-
-        // Pasar el groupId como inputData
         val inputData = workDataOf("GROUP_ID" to groupId)
 
         val workRequest = OneTimeWorkRequestBuilder<TaskSyncWorker>()

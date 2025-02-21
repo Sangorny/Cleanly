@@ -15,6 +15,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 
+
+//Barra de navegación inferior
 @Composable
 fun WelcomeDownBar(onNavigate: (String) -> Unit) {
     val selectedItem = remember { mutableStateOf(0) }

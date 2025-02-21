@@ -102,7 +102,7 @@ fun ProgramarScreen(navController: NavHostController, groupId: String) {
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    colors = listOf(Color(0xFF0D47A1), Color(0xFF00E676)) // Gradiente azul a verde
+                    colors = listOf(Color(0xFF0D47A1), Color(0xFF00E676))
                 )
             )
     ) {
@@ -343,7 +343,7 @@ fun actualizarFrecuencia(
 ) {
     if (tarea == null) return
 
-    db.collection("grupos").document(groupId).collection("mistareas") // Ajusta la referencia al grupo y subcolección
+    db.collection("grupos").document(groupId).collection("mistareas")
         .whereEqualTo("nombre", tarea.nombre)
         .get()
         .addOnSuccessListener { result ->

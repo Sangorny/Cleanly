@@ -19,10 +19,12 @@ import androidx.compose.ui.unit.sp
 import coil.compose.rememberImagePainter
 import com.cleanly.R
 
+
+//Barra superior de navegación
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WelcomeTopBar(
-    photoUrl: Uri?, // Recibe el estado del avatar
+    photoUrl: Uri?,
     displayName: String,
     onProfileClick: () -> Unit,
     onGroupManagementClick: () -> Unit,

@@ -241,23 +241,22 @@ fun MainScreen(
                 }
 
                 composable(
-                    route = "group_management/{groupId}/{userId}", // Usa llaves {}, no paréntesis
+                    route = "group_management/{groupId}/{userId}",
                     arguments = listOf(
                         navArgument("groupId") { type = NavType.StringType },
                         navArgument("userId") { type = NavType.StringType }
                     )
                 ) { backStackEntry ->
-                    // Obtén los parámetros correctamente
                     val groupIdParam = backStackEntry.arguments?.getString("groupId") ?: ""
                     val userIdParam = backStackEntry.arguments?.getString("userId") ?: ""
 
                     GroupManagementScreen(
                         navController = navController,
-                        groupId = groupIdParam, // Usa la variable local
+                        groupId = groupIdParam,
                         userId = userIdParam,
                         isAdmin = isAdmin,
                         onGroupLeft = {
-                            groupId = null // Modifica el estado de MainScreen, no la variable local
+                            groupId = null
                         }
                     )
                 }
@@ -287,7 +286,7 @@ fun MainScreen(
                 }
 
                 composable("profile") {
-                    val grupoId = "" // Obtén el grupo al que pertenece el usuario
+                    val grupoId = ""
                     val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
                     ProfileScreen(
@@ -303,7 +302,7 @@ fun MainScreen(
 
                 composable("zonas") {
                     Zonas(
-                        groupId = groupId.orEmpty(), // Pasar el groupId directamente
+                        groupId = groupId.orEmpty(),
                         onZoneClick = { zoneName ->
                             val encodedZone = Uri.encode(zoneName)
                             val encodedGroupId = Uri.encode(groupId.orEmpty())
@@ -326,8 +325,8 @@ fun MainScreen(
                         navController = navController,
                         zonaSeleccionada = zona,
                         groupId = groupId,
-                        nombresUsuarios = nombresUsuarios.value, // Pasa nombresUsuarios aquí
-                        isAdmin = isAdmin // Pasa isAdmin aquí
+                        nombresUsuarios = nombresUsuarios.value,
+                        isAdmin = isAdmin
                     )
                 }
             }

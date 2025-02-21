@@ -1,7 +1,6 @@
 package com.cleanly
 
 
-import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,20 +17,19 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavHostController
 
 
+//Parte de Zonas
 @Composable
 fun Zonas(
     groupId: String,
-    onZoneClick: (String) -> Unit // Asegúrate de incluir este parámetro
+    onZoneClick: (String) -> Unit
 ) {
     val zones = listOf(
         "Aseo" to R.drawable.bano,
@@ -73,7 +71,7 @@ fun Zonas(
 
             ZoneGrid(
                 zones = zones,
-                onZoneClick = onZoneClick // Asegúrate de pasar el callback correctamente
+                onZoneClick = onZoneClick
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -85,7 +83,7 @@ fun Zonas(
 fun ZoneGrid(
     zones: List<Pair<String, Int>>,
     modifier: Modifier = Modifier,
-    onZoneClick: (String) -> Unit // Parámetro necesario para manejar clics
+    onZoneClick: (String) -> Unit
 ) {
 
     val customFontFamily = FontFamily(
@@ -103,16 +101,16 @@ fun ZoneGrid(
                     .size(150.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surface)
-                    .clickable { onZoneClick(zoneName) }, // Llamada al callback
+                    .clickable { onZoneClick(zoneName) },
                 contentAlignment = Alignment.Center
             ) {
                 Image(
                     painter = painterResource(id = imageRes),
                     contentDescription = null,
-                    contentScale = ContentScale.Crop, // Ajusta la imagen para llenar el espacio
+                    contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .fillMaxSize()
-                        .clip(RoundedCornerShape(8.dp)) // Mantén o elimina esto según tus necesidades
+                        .clip(RoundedCornerShape(8.dp))
                 )
 
                 Text(

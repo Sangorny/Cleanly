@@ -24,6 +24,8 @@ import com.google.firebase.firestore.FirebaseFirestore
 
 
 
+
+//Pantalla para crear y unir a un grupo
 @Composable
 fun GroupScreen(
     navController: NavHostController,
@@ -35,7 +37,7 @@ fun GroupScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
 
-    // Validación de campos vacíos
+    //Validacion de campos vacios
     fun validateInput(input: String, fieldName: String): Boolean {
         return if (input.isBlank()) {
             errorMessage = "$fieldName no puede estar vacío."
@@ -76,7 +78,8 @@ fun GroupScreen(
                     isLoading = false
                     Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show()
                     // Opcional: podríamos navegar a otra pantalla o quedarnos
-                    // navController.navigate("GroupScreen")  // si quieres recargar la misma pantalla
+                    // navController.navigate("GroupScreen")
+                    // Si quieres recargar la misma pantalla!
                 }
             )
         }
@@ -109,7 +112,7 @@ fun GroupScreen(
                             text = "Crear o Unirse a un Grupo",
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White // Texto blanco
+                            color = Color.White
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
@@ -118,7 +121,7 @@ fun GroupScreen(
                         TextField(
                             value = groupName,
                             onValueChange = { groupName = it },
-                            label = { Text("Nombre del Grupo", color = Color.Black) }, // Texto blanco
+                            label = { Text("Nombre del Grupo", color = Color.Black) },
                             placeholder = { Text("Introduce nombre grupo", color = Color.Gray) },
                             modifier = Modifier
                                 .width(260.dp)
@@ -132,7 +135,7 @@ fun GroupScreen(
                             modifier = Modifier
                                 .width(160.dp)
                                 .height(56.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE91E63)), // Nuevo color del botón
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE91E63)),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             if (isLoading) {
@@ -167,7 +170,7 @@ fun GroupScreen(
                             modifier = Modifier
                                 .width(160.dp)
                                 .height(56.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE91E63)), // Otro color del botón
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE91E63)),
                             shape = RoundedCornerShape(16.dp)
                         ) {
                             if (isLoading) {
@@ -194,10 +197,10 @@ fun handleFirestoreError(context: Context, tag: String, message: String?, except
     Log.e(tag, errorMsg, exception)
     Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show()
 }
-
+//Función para crear el grupo
 fun createGroup(context: Context, name: String, userId: String, onSuccess: () -> Unit) {
     val firestore = FirebaseFirestore.getInstance()
-    val uniqueId = generateUniqueId() // Genera un ID único para el grupo
+    val uniqueId = generateUniqueId()
 
     val group = Group(
         name = name,
@@ -262,7 +265,7 @@ fun joinGroup(
     groupCode: String,
     userId: String,
     onSuccess: () -> Unit,
-    onFailure: (String) -> Unit  // <-- Nuevo callback de fallo
+    onFailure: (String) -> Unit
 ) {
     val firestore = FirebaseFirestore.getInstance()
 
@@ -271,7 +274,8 @@ fun joinGroup(
         .get()
         .addOnSuccessListener { querySnapshot ->
             if (querySnapshot.isEmpty) {
-                // Código de grupo no válido
+
+                // Maneja el código de grupo no válido
                 onFailure("Código de grupo no válido")
                 return@addOnSuccessListener
             }
@@ -279,7 +283,6 @@ fun joinGroup(
             val groupDoc = querySnapshot.documents.first()
             val groupId = groupDoc.id
 
-            // Mueve al usuario de 'singrupo' al grupo objetivo
             moveUserToGroup(context, firestore, groupId, userId) {
                 onSuccess()
             }
@@ -340,6 +343,6 @@ fun moveUserToGroup(
 
 // Generar un ID único
 fun generateUniqueId(): String {
-    val charset = ('A'..'F') + ('0'..'9') // Usamos caracteres hexadecimales
+    val charset = ('A'..'F') + ('0'..'9')
     return "#" + List(6) { charset.random() }.joinToString("")
 }

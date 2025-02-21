@@ -16,13 +16,13 @@ fun programarTaskSync(context: Context, groupId: String) {
         "GROUP_ID" to groupId
     )
 
-    val workManager = WorkManager.getInstance(context) // 🔹 Obtén el WorkManager
+    val workManager = WorkManager.getInstance(context)
 
-    // 🔹 Cancela cualquier Worker anterior para este groupId antes de encolar uno nuevo
+    //Cancela cualquier Worker anterior para este groupId antes de encolar uno nuevo
     workManager.cancelUniqueWork("TaskSyncWorker_$groupId")
 
     val taskSyncWorkRequest = PeriodicWorkRequestBuilder<TaskSyncWorker>(15, TimeUnit.MINUTES)
-        .setInputData(inputData) // 🔹 Aquí enviamos el groupId al Worker
+        .setInputData(inputData)
         .setConstraints(
             Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -31,16 +31,16 @@ fun programarTaskSync(context: Context, groupId: String) {
         .build()
 
     workManager.enqueueUniquePeriodicWork(
-        "TaskSyncWorker_$groupId", // 🔹 Un identificador único por grupo
-        ExistingPeriodicWorkPolicy.REPLACE, // 🔹 Reemplaza cualquier Worker en ejecución
+        "TaskSyncWorker_$groupId",
+        ExistingPeriodicWorkPolicy.REPLACE,
         taskSyncWorkRequest
     )
 
     Log.d("TaskSyncWorker", "Worker programado para groupId: $groupId cada 15 minutos.")
 }
 
+// Configurar el calendario para obtener las 23:59 del día en curso (o del siguiente si ya pasó)
 fun scheduleInitialReset(context: Context, isAdmin: Boolean, groupId: String) {
-    // Configurar el calendario para obtener las 23:59 del día en curso (o del siguiente si ya pasó)
     val now = Calendar.getInstance()
     val nextReset = Calendar.getInstance().apply {
         set(Calendar.HOUR_OF_DAY, 23)
