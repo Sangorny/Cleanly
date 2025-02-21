@@ -2,8 +2,6 @@ package com.cleanly
 
 import android.content.Context
 import android.widget.Toast
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.NavHostController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.userProfileChangeRequest
@@ -12,9 +10,9 @@ import com.google.firebase.firestore.FirebaseFirestore
 lateinit var auth: FirebaseAuth
 
 fun createAccount(email: String, password: String, nick: String, context: Context, navController: NavHostController) {
-    auth = FirebaseAuth.getInstance() // Asegúrate de inicializar FirebaseAuth
+    auth = FirebaseAuth.getInstance()
 
-    val grupoId = "singrupo" // Grupo predeterminado
+    val grupoId = "singrupo"
 
     if (!InputValidator.isEmailValid(email)) {
         Toast.makeText(context, "Email no válido. Formato example@domain.com", Toast.LENGTH_SHORT).show()
@@ -35,7 +33,6 @@ fun createAccount(email: String, password: String, nick: String, context: Contex
                 val user = auth.currentUser
                 val uid = user?.uid ?: return@addOnCompleteListener
 
-                // Actualizar perfil del usuario
                 val profileUpdates = userProfileChangeRequest {
                     displayName = nick
                 }
@@ -50,10 +47,10 @@ fun createAccount(email: String, password: String, nick: String, context: Contex
                                 rol = "pendiente",
                                 context = context
                             )
-                            // Redirigir a la pantalla de crear o unirse a un grupo (GroupScreen)
+
                             navController.navigate("group_screen/$uid") {
-                                popUpTo("register") { inclusive = true }  // Elimina la pantalla de registro de la pila
-                                launchSingleTop = true // Evitar duplicados
+                                popUpTo("register") { inclusive = true }
+                                launchSingleTop = true
                             }
                         }
                     }
@@ -80,7 +77,7 @@ fun agregarUsuarioAGrupo(
 
     db.collection("grupos").document(grupoId)
         .collection("usuarios")
-        .document(uid) // Usa el UID como ID del documento
+        .document(uid)
         .set(usuario)
         .addOnSuccessListener {
             Toast.makeText(context, "Usuario añadido", Toast.LENGTH_SHORT).show()
@@ -90,14 +87,13 @@ fun agregarUsuarioAGrupo(
         }
 }
 
+//Verifica que tenga un email valido
 fun forgotPassword(email: String, context: Context) {
-    // Verificar que el email tenga un formato válido (puedes usar el mismo InputValidator que usas en otros puntos)
+
     if (!InputValidator.isEmailValid(email)) {
         Toast.makeText(context, "Email no válido", Toast.LENGTH_SHORT).show()
         return
     }
-
-    // Enviar correo de restablecimiento de contraseña
     FirebaseAuth.getInstance().sendPasswordResetEmail(email)
         .addOnCompleteListener { task ->
             if (task.isSuccessful) {
@@ -113,7 +109,7 @@ fun forgotPassword(email: String, context: Context) {
         }
 }
 
-// NUEVA FUNCIÓN: Actualizar contraseña del usuario actual
+//Funcion para hacer update a la pass
 fun updatePassword(newPassword: String, context: Context, onComplete: (Boolean, String?) -> Unit) {
     val user = FirebaseAuth.getInstance().currentUser
     if (user != null) {

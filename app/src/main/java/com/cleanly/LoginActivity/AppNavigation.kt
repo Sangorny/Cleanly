@@ -1,6 +1,6 @@
 package com.cleanly
 
-import MisTareasScreen
+
 import RegisterScreen
 import android.util.Log
 import androidx.compose.material.CircularProgressIndicator
@@ -22,21 +22,18 @@ import com.cleanly.PerfilActivity.GroupScreen
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
-
     NavHost(navController = navController, startDestination = ("splash")) {
 
-
-        // Pantalla Splash
+        //Pantalla de Carga
         composable("splash") {
             SplashScreen(navController = navController)
         }
 
-
+        //Pantalla de Registro
         composable("register") {
             RegisterScreen(navController = navController)
         }
-
-        // Pantalla Login
+        // Pantalla de Login
         composable("login") {
             LoginScreen(
                 navController = navController,
@@ -48,32 +45,25 @@ fun AppNavigation() {
                 }
             )
         }
-
+        //Pantalla de MainScreen
         composable(
             route = "main_screen?zonaSeleccionada={zonaSeleccionada}",
             arguments = listOf(
                 navArgument("zonaSeleccionada") {
                     type = NavType.StringType
-                    nullable = true // Permitir que sea null
-                    defaultValue = null // Valor por defecto null
+                    nullable = true
+                    defaultValue = null
                 }
             )
         ) { backStackEntry ->
             val zonaSeleccionada = backStackEntry.arguments?.getString("zonaSeleccionada")
             MainScreen(
-                onNavigateToTarea = null, // Pasar null si no se necesita callback
-                onNavigateToZonas = null, // Pasar null si no se necesita callback
+                onNavigateToTarea = null,
+                onNavigateToZonas = null,
                 zonaSeleccionada = zonaSeleccionada
             )
         }
-
-
-
-        // Otras pantallas
-        composable("mis_tareas") {
-            MisTareasScreen(navController)
-        }
-
+        // Pantalla de Usuario
         composable("profile") { navBackStackEntry ->
             val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
             val grupoId = remember { mutableStateOf<String?>(null) }
@@ -111,60 +101,6 @@ fun AppNavigation() {
             }
         }
 
-    /*    composable("group_management/{grupoId}") { backStackEntry ->
-            val grupoIdArg = backStackEntry.arguments?.getString("groupId") ?: ""
-            val userId = backStackEntry.arguments?.getString("userId") ?: ""
-            GroupManagementScreen(
-                navController = navController,
-                userId = userId,
-                groupId = grupoIdArg,
-                isAdmin = isAdmin,
-                onGroupLeft = {
-                    Log.d("Navigation", "El usuario ha dejado el grupo")
-                }
-            )
-        }*/
-
-        /*// Navegación para Zonas
-        composable(
-            route = "zonas/{groupId}",
-            arguments = listOf(
-                navArgument("groupId") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
-
-            if (groupId.isNotEmpty()) {
-                Zonas(groupId = groupId) { zoneName ->
-                    navController.navigate("tarea?zona=$zoneName&groupId=$groupId")
-                }
-            } else {
-                Log.e("NavHost", "groupId está vacío. Verifica la navegación.")
-                Toast.makeText(
-                    LocalContext.current,
-                    "Error al cargar las zonas: groupId no encontrado.",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        }*/
-
-        /* // Navegación para TareaScreen
-         composable(
-             route = "tarea?zona={zona}&groupId={groupId}",
-             arguments = listOf(
-                 navArgument("zona") { type = NavType.StringType; defaultValue = "" },
-                 navArgument("groupId") { type = NavType.StringType; defaultValue = "" }
-             )
-         ) { backStackEntry ->
-             val zona = backStackEntry.arguments?.getString("zona") ?: ""
-             val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
-
-             TareaScreen(
-                 navController = navController,
-                 zonaSeleccionada = zona,
-                 groupId = groupId // Pasar el groupId
-             )
-         }*/
 
     }
 }

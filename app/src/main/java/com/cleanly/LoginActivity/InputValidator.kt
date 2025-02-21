@@ -1,6 +1,7 @@
 package com.cleanly
 
 
+//Validador de email, pass y user
 object InputValidator {
 
     fun isEmailValid(email: String): Boolean {

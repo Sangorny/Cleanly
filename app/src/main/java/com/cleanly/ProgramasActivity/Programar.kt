@@ -46,8 +46,8 @@ data class Tarea(
     val nombre: String,
     val puntos: Int,
     val zona: String,
-    val frecuencia: String = "", // Por defecto vacío si no está definido
-    val subzona: String = "" // Asegúrate de incluir subzona
+    val frecuencia: String = "",
+    val subzona: String = ""
 )
 
 @Composable
@@ -58,11 +58,8 @@ fun ProgramarScreen(navController: NavHostController, groupId: String) {
     var mostrarDialogo by remember { mutableStateOf(false) }
     val firestore = FirebaseFirestore.getInstance()
     val context = LocalContext.current
-    // Pestañas
     val tabTitles = listOf("Sin Programar", "Diarias", "Semanales", "Mensuales")
     var selectedTabIndex by remember { mutableStateOf(0) }
-
-    // PERMISO NOTIFICACIONES
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
@@ -81,11 +78,10 @@ fun ProgramarScreen(navController: NavHostController, groupId: String) {
             launcher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
         }
 
-        // Asegúrate de que groupId esté disponible
         if (groupId.isNotEmpty()) {
             cargarTodasLasTareasDesdeFirestore(
                 db = firestore,
-                groupId = groupId, // Pasa el groupId aquí
+                groupId = groupId,
                 onSuccess = { tareas ->
                     todasLasTareas = tareas
                     isLoading = false
@@ -101,7 +97,6 @@ fun ProgramarScreen(navController: NavHostController, groupId: String) {
         }
     }
 
-    // Fondo aplicado a toda la pantalla
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -112,7 +107,7 @@ fun ProgramarScreen(navController: NavHostController, groupId: String) {
             )
     ) {
         Scaffold(
-            containerColor = Color.Transparent, // Importante para mantener el fondo visible
+            containerColor = Color.Transparent,
             content = { paddingValues ->
                 if (isLoading) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -132,7 +127,6 @@ fun ProgramarScreen(navController: NavHostController, groupId: String) {
                         )
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Pestañas
                         TabRow(
                             selectedTabIndex = selectedTabIndex,
                             containerColor = Color(0xFF0D47A1),
@@ -187,7 +181,7 @@ fun ProgramarScreen(navController: NavHostController, groupId: String) {
                         Button(onClick = {
                             actualizarFrecuencia(
                                 db = firestore,
-                                groupId = groupId, // Pasa el groupId aquí
+                                groupId = groupId,
                                 tarea = tareaSeleccionada,
                                 nuevaFrecuencia = "Diaria",
                                 onCompletion = { tareas ->
@@ -202,7 +196,7 @@ fun ProgramarScreen(navController: NavHostController, groupId: String) {
                         Button(onClick = {
                             actualizarFrecuencia(
                                 db = firestore,
-                                groupId = groupId, // Pasa el groupId aquí
+                                groupId = groupId,
                                 tarea = tareaSeleccionada,
                                 nuevaFrecuencia = "Semanal",
                                 onCompletion = { tareas ->
@@ -217,7 +211,7 @@ fun ProgramarScreen(navController: NavHostController, groupId: String) {
                         Button(onClick = {
                             actualizarFrecuencia(
                                 db = firestore,
-                                groupId = groupId, // Pasa el groupId aquí
+                                groupId = groupId,
                                 tarea = tareaSeleccionada,
                                 nuevaFrecuencia = "Mensual",
                                 onCompletion = { tareas ->
@@ -232,7 +226,7 @@ fun ProgramarScreen(navController: NavHostController, groupId: String) {
                         Button(onClick = {
                             actualizarFrecuencia(
                                 db = firestore,
-                                groupId = groupId, // Pasa el groupId aquí
+                                groupId = groupId,
                                 tarea = tareaSeleccionada,
                                 nuevaFrecuencia = null,
                                 onCompletion = { tareas ->
@@ -258,11 +252,10 @@ fun ProgramarScreen(navController: NavHostController, groupId: String) {
 
 fun cargarTodasLasTareasDesdeFirestore(
     db: FirebaseFirestore,
-    groupId: String, // Nuevo parámetro para identificar el grupo
+    groupId: String,
     onSuccess: (List<Tarea>) -> Unit,
     onFailure: (Exception) -> Unit
 ) {
-    // Referencia a la subcolección "mistareas" dentro del grupo
     db.collection("grupos").document(groupId).collection("mistareas")
         .get()
         .addOnSuccessListener { result ->
@@ -270,23 +263,22 @@ fun cargarTodasLasTareasDesdeFirestore(
                 val nombre = document.getString("nombre") ?: return@mapNotNull null
                 val puntos = document.getLong("puntos")?.toInt() ?: return@mapNotNull null
                 val zona = document.getString("zona") ?: "Sin Zona"
-                val frecuencia = document.getString("frecuencia") ?: "" // Si no existe, asigna ""
-                val subzona = document.getString("subzona") ?: "Sin Subzona" // Traemos la subzona
-                Tarea(nombre, puntos, zona, frecuencia, subzona) // Asegúrate de que subzona esté en Tarea
+                val frecuencia = document.getString("frecuencia") ?: ""
+                val subzona = document.getString("subzona") ?: "Sin Subzona"
+                Tarea(nombre, puntos, zona, frecuencia, subzona)
             }
-            onSuccess(listaTareas) // Devuelve la lista de tareas
+            onSuccess(listaTareas)
         }
         .addOnFailureListener { exception ->
-            onFailure(exception) // Maneja cualquier error
+            onFailure(exception)
         }
 }
 
 @Composable
 fun MostrarTareasPorZona(
     tareas: List<Tarea>,
-    onProgramarTarea: (Tarea) -> Unit // Agrega este parámetro
+    onProgramarTarea: (Tarea) -> Unit
 ) {
-    // Agrupa las tareas por zona
     val tareasPorZona = tareas.groupBy { it.zona ?: "Sin Zona" }
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -300,7 +292,6 @@ fun MostrarTareasPorZona(
                     modifier = Modifier.padding(8.dp)
                 )
             }
-            // Pasa onProgramarTarea a TareaItem
             items(tareasZona) { tarea ->
                 TareaItem(tarea = tarea, onProgramarTarea = onProgramarTarea)
             }
@@ -329,8 +320,6 @@ fun TareaItem(tarea: Tarea, onProgramarTarea: (Tarea) -> Unit) {
                 color = Color.White,
                 modifier = Modifier.padding(8.dp)
             )
-
-            // Mostrar la subzona solo si está definida y no es "Sin Subzona"
             if (!tarea.subzona.isNullOrBlank() && tarea.subzona != "Sin Subzona") {
                 Text(
                     text = tarea.subzona,
@@ -347,15 +336,15 @@ fun TareaItem(tarea: Tarea, onProgramarTarea: (Tarea) -> Unit) {
 
 fun actualizarFrecuencia(
     db: FirebaseFirestore,
-    groupId: String, // Agregado para identificar el grupo
+    groupId: String,
     tarea: Tarea?,
     nuevaFrecuencia: String?,
-    onCompletion: (List<Tarea>) -> Unit // Callback para recargar las tareas
+    onCompletion: (List<Tarea>) -> Unit
 ) {
     if (tarea == null) return
 
     db.collection("grupos").document(groupId).collection("mistareas") // Ajusta la referencia al grupo y subcolección
-        .whereEqualTo("nombre", tarea.nombre) // Filtra por el nombre de la tarea
+        .whereEqualTo("nombre", tarea.nombre)
         .get()
         .addOnSuccessListener { result ->
             if (result.isEmpty) return@addOnSuccessListener
@@ -363,7 +352,6 @@ fun actualizarFrecuencia(
             val docRef = result.documents.first().reference
             docRef.update("frecuencia", nuevaFrecuencia)
                 .addOnSuccessListener {
-                    // Recargar todas las tareas tras la actualización
                     cargarTodasLasTareasDesdeFirestore(db, groupId, onCompletion, {})
                 }
                 .addOnFailureListener {

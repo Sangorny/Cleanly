@@ -31,11 +31,8 @@ fun LoginScreen(
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-
     val auth = FirebaseAuth.getInstance()
     val context = navController.context
-
-    // Configuración de Google Sign-In
     val googleSignInOptions = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
         .requestIdToken(context.getString(R.string.default_web_client_id))
         .requestEmail()
@@ -80,7 +77,6 @@ fun LoginScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Logo de la aplicación
         Image(
             painter = painterResource(id = R.drawable.app_logo),
             contentDescription = "Logo de Cleanly",
@@ -157,12 +153,10 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Agregamos el enlace para restablecer la contraseña
         Text(
             text = "¿Olvidaste tu contraseña?",
             modifier = Modifier.clickable {
                 if (email.isNotEmpty() && InputValidator.isEmailValid(email)) {
-                    // Llamamos a la función encargada de enviar el correo de restablecimiento.
                     forgotPassword(email, context)
                 } else {
                     Toast.makeText(context, "Por favor, ingrese un email válido", Toast.LENGTH_SHORT).show()

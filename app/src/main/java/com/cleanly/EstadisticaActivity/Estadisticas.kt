@@ -172,10 +172,10 @@ fun fetchVictories(groupId: String, firestore: FirebaseFirestore, userId: String
 fun scheduleResetScores(groupId: String, firestore: FirebaseFirestore) {
     val now = Calendar.getInstance()
     val resetTime = Calendar.getInstance().apply {
-        set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-        set(Calendar.HOUR_OF_DAY, 0)
-        set(Calendar.MINUTE, 0)
-        set(Calendar.SECOND, 0)
+        set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY)
+        set(Calendar.HOUR_OF_DAY, 23)
+        set(Calendar.MINUTE, 59)
+        set(Calendar.SECOND, 59)
         set(Calendar.MILLISECOND, 0)
         if (this.timeInMillis <= now.timeInMillis) {
             add(Calendar.DAY_OF_YEAR, 7)
@@ -243,35 +243,27 @@ fun resetScores(
     val groupVictoriesRef = firestore.collection("grupos").document(groupId).collection("victorias")
     val groupTasksRef = firestore.collection("grupos").document(groupId).collection("mistareas")
 
-    // Verificar si ya está en progreso para evitar duplicidades
     if (resetInProgress) {
         Log.d("resetScores", "Reseteo ya está en progreso. Cancelando ejecución duplicada.")
         return
     }
 
-    resetInProgress = true // Marcar como en progreso
+    resetInProgress = true
 
     // Obtener la clasificación actual
     fetchMemberRanking(groupId, firestore) { ranking ->
         if (ranking.isNotEmpty()) {
             val ganador = ranking.first().first
 
-            // Incrementar la victoria solo una vez
-            // Incrementar la victoria del usuario ganador en un documento personal dentro del grupo
-            groupVictoriesRef.document(ganador).get().addOnSuccessListener { doc ->
-                val currentVictories = doc.getLong("count")?.toInt() ?: 0
-                val newVictories = currentVictories + 1
-
-                groupVictoriesRef.document(ganador)
-                    .set(mapOf("count" to newVictories))
-                    .addOnSuccessListener {
-                        Log.d("resetScores", "Victoria sumada correctamente para $ganador")
-                    }
-                    .addOnFailureListener { e ->
-                        Log.e("resetScores", "Error al sumar victoria: ${e.message}")
-                    }
-            }
-
+            // Incrementar la victoria de forma atómica
+            groupVictoriesRef.document(ganador)
+                .update("count", FieldValue.increment(1))
+                .addOnSuccessListener {
+                    Log.d("resetScores", "Victoria sumada correctamente para $ganador")
+                }
+                .addOnFailureListener { e ->
+                    Log.e("resetScores", "Error al sumar victoria: ${e.message}")
+                }
 
             // Resetear solo tareas completadas
             groupTasksRef.whereNotEqualTo("completadoPor", "")
@@ -286,9 +278,13 @@ fun resetScores(
                 .addOnFailureListener { e ->
                     Log.e("resetScores", "Error al resetear tareas: ${e.message}")
                 }
-                .addOnCompleteListener { task ->
-                    resetInProgress = false // Resetear bandera al finalizar
+                .addOnCompleteListener {
+                    resetInProgress = false
                 }
+        } else {
+            // Si no hay ranking, liberar la bandera para permitir futuros resets
+            Log.d("resetScores", "No hay ranking para resetear")
+            resetInProgress = false
         }
     }
 }
