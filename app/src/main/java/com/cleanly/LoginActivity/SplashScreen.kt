@@ -25,7 +25,7 @@ fun SplashScreen(navController: NavHostController) {
         delay(3000)
 
         if (auth.currentUser != null) {
-            val intent = Intent(navController.context, TareaActivity::class.java)
+            val intent = Intent(navController.context, WelcomActivity::class.java)
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             navController.context.startActivity(intent)
         } else {
