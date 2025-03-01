@@ -15,30 +15,6 @@ import com.cleanly.ui.theme.CleanlyTheme
 import com.google.firebase.firestore.FirebaseFirestore
 
 
-class TareaActivity : ComponentActivity() {
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-        val zonaSeleccionada = intent.getStringExtra("zona") ?: ""
-
-        setContent {
-            CleanlyTheme {
-                val navController = rememberNavController()
-                MainScreen(
-                    onNavigateToTarea = { tarea ->
-                    },
-                    onNavigateToZonas = {
-                        navController.navigate("zonas")
-                    },
-                    zonaSeleccionada = zonaSeleccionada
-                )
-            }
-        }
-    }
-}
-
-
 @Composable
 fun TareaScreen(navController: NavHostController,
                 groupId: String,
